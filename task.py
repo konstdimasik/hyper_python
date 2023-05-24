@@ -2,13 +2,13 @@ import string
 import re
 
 
-class User:
-    all_users = []
+class Student:
+    all_students = []
     all_emails = set()
     ID = 10000
 
     def __init__(self, first=None, last=None, email=None):
-        self.id = User.ID
+        self.id = Student.ID
         self.firstname = first
         self.lastname = last
         self.email = email
@@ -17,11 +17,11 @@ class User:
         self.database = 0
         self.flask = 0
 
-        User.ID += 1
-        User.all_emails.add(self.email)
-        User.all_users.append(self)
+        Student.ID += 1
+        Student.all_emails.add(self.email)
+        Student.all_students.append(self)
 
-    def print_user(self):
+    def print_student(self):
         print(f"{self.id} points: Python={self.python}; DSA={self.dsa}; Databases={self.database}; Flask={self.flask}")
 
     def update_points(self, one, two, three, four):
@@ -31,10 +31,35 @@ class User:
         self.flask += four
 
 
-def find_user_by_id(some_id):
-    for user in User.all_users:
-        if user.id == some_id:
-            return user
+class WrongNameError(Exception):
+    def __str__(self):
+        return "Incorrect first name"
+
+
+class WrongLastNameError(Exception):
+    def __str__(self):
+        return "Incorrect last name"
+
+
+class WrongEmailError(Exception):
+    def __str__(self):
+        return "Incorrect email"
+
+
+class WrongCredentialsError(Exception):
+    def __str__(self):
+        return "Incorrect credentials."
+
+
+class NegativePointError(Exception):
+    def __str__(self):
+        return "Incorrect points format."
+
+
+def find_student_by_id(some_id):
+    for student in Student.all_students:
+        if student.id == some_id:
+            return student
     return None
 
 
@@ -48,8 +73,8 @@ def verify_email(email):
     return True
 
 
-def verify_email_uniqueness(email):
-    return email in User.all_emails
+def is_email_unique(email):
+    return email in Student.all_emails
 
 
 def verity_name(first):
@@ -73,25 +98,24 @@ def verify_lastname(second):
 
 
 def verify(command):
-    first, second, email = (None, None, None)
-
     command_parts = command.split(" ")
     if len(command_parts) < 3:
-        return first, second, email
+        raise WrongCredentialsError
 
     email = command_parts[-1]
     if not verify_email(email):
-        email = "Incorrect email"
+        raise WrongEmailError
 
     first = command_parts[0]
     if not verity_name(first):
-        first = "Incorrect first name"
+        raise WrongNameError
 
     second = command_parts[1:-1]
     if not verify_lastname(second):
-        second = "Incorrect last name"
+        raise WrongLastNameError
     else:
         second = " ".join(second)
+
     return first, second, email
 
 
@@ -102,21 +126,25 @@ def add_students():
         if command == 'back':
             print(f"Total {counter} students have been added.")
             break
-        credentials = verify(command)
-        j = 0
-        for i in range(3):
-            if credentials[i] in ("Incorrect first name", "Incorrect last name", "Incorrect email"):
-                print(credentials[i])
-                break
-            if credentials[i] is None:
-                print("Incorrect credentials.")
-                break
-            j += 1
-        if verify_email_uniqueness(credentials[-1]):
-            print("This email is already taken.")
+        try:
+            credentials = verify(command)
+        except WrongEmailError as err:
+            print(err)
             continue
-        if j == 3:
-            User(*credentials)
+        except WrongNameError as err:
+            print(err)
+            continue
+        except WrongLastNameError as err:
+            print(err)
+            continue
+        except WrongCredentialsError as err:
+            print(err)
+            continue
+        else:
+            if is_email_unique(credentials[-1]):
+                print("This email is already taken.")
+                continue
+            Student(*credentials)
             counter += 1
             print("The student has been added.")
 
@@ -128,12 +156,12 @@ def add_points():
             break
         id_vs_points = entry_points.split(" ")
         try:
-            user_id = int(id_vs_points[0])
-            user_by_id = find_user_by_id(user_id)
+            student_id = int(id_vs_points[0])
+            student_by_id = find_student_by_id(student_id)
         except ValueError:
             print(f"No student is found for id={id_vs_points[0]}.")
             continue
-        if user_by_id is None:
+        if student_by_id is None:
             print(f"No student is found for id={id_vs_points[0]}.")
             continue
         points = id_vs_points[1:]
@@ -145,13 +173,14 @@ def add_points():
         except ValueError:
             print("Incorrect points format.")
             continue
-        points_check = True
-        for point in points:
-            if point < 0:
-                print("Incorrect points format.")
-                points_check = False
-        if points_check:
-            user_by_id.update_points(*points)
+        try:
+            for point in points:
+                if point < 0:
+                    raise NegativePointError
+        except NegativePointError as err:
+            print(err)
+        else:
+            student_by_id.update_points(*points)
             print("Points updated.")
 
 
@@ -164,15 +193,15 @@ def find():
         if entry_id == "back":
             break
         try:
-            user_id = int(entry_id)
-            user_by_id = find_user_by_id(user_id)
+            student_id = int(entry_id)
+            student_by_id = find_student_by_id(student_id)
         except ValueError:
             print(f"No student is found for id={entry_id}.")
             continue
-        if user_by_id is None:
-            print(f"No student is found for id={user_id}.")
+        if student_by_id is None:
+            print(f"No student is found for id={student_id}.")
             continue
-        user_by_id.print_user()
+        student_by_id.print_student()
 
 
 def main():
@@ -192,12 +221,12 @@ def main():
             print("Enter student credentials or 'back' to return:")
             add_students()
         elif entry == "list":
-            if len(User.all_users) == 0:
+            if len(Student.all_students) == 0:
                 print("No students found.")
                 continue
             else:
                 print("Students:")
-            for student in User.all_users:
+            for student in Student.all_students:
                 print(f"{student.id}")
         elif entry == "add points":
             print("Enter an id and points or 'back' to return:")
