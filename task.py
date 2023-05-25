@@ -29,6 +29,15 @@ class Student:
         self.databases += three
         self.flask += four
 
+    def get_points(self, course):
+        points = {
+            "Python": self.python,
+            "DSA": self.dsa,
+            "Databases": self.databases,
+            "Flask":self.flask,
+        }
+        return points.get(course)
+
 
 class Course:
     all_courses = []
@@ -49,7 +58,15 @@ class Course:
     def give_stat(self):
         print(self.name)
         print("id    points    completed")
-        pass
+        data = {}
+        for student_id in self.students:
+            student_by_id = find_student_by_id(student_id)
+            points_sum = student_by_id.get_points(self.name)
+            progress = round(points_sum / self.max_points * 100, 1)
+            data[student_id] = (points_sum, progress)
+        sorted_data = sorted(data.items(), key=lambda x: x[1][0], reverse=True)
+        for value in sorted_data:
+            print("{:<5} {: <9} {}%".format(value[0], value[1][0], value[1][1]))
 
 
 class WrongNameError(Exception):
@@ -223,10 +240,10 @@ def add_points():
             print(err)
             continue
         student_by_id.update_points(*points)
-        python.update_stat(student_by_id, points[0])
-        dsa.update_stat(student_by_id, points[1])
-        databases.update_stat(student_by_id, points[2])
-        flask.update_stat(student_by_id, points[3])
+        python.update_stat(student_id, points[0])
+        dsa.update_stat(student_id, points[1])
+        databases.update_stat(student_id, points[2])
+        flask.update_stat(student_id, points[3])
         print("Points updated.")
 
 
