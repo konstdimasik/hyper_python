@@ -4,32 +4,52 @@ import string
 
 class Student:
     all_students = []
-    all_emails = set()
-    ID = 10000
+    id_counter = 10000
 
     def __init__(self, first=None, last=None, email=None):
-        self.id = Student.ID
+        self.id = Student.id_counter
         self.firstname = first
         self.lastname = last
         self.email = email
         self.python = 0
         self.dsa = 0
-        self.database = 0
+        self.databases = 0
         self.flask = 0
 
-        Student.ID += 1
-        Student.all_emails.add(self.email)
+        Student.id_counter += 1
         Student.all_students.append(self)
 
     def print_student(self):
         print(f"{self.id} points: Python={self.python}; DSA={self.dsa}; ", end="")
-        print(f"Databases={self.database}; Flask={self.flask}")
+        print(f"Databases={self.databases}; Flask={self.flask}")
 
     def update_points(self, one, two, three, four):
         self.python += one
         self.dsa += two
-        self.database += three
+        self.databases += three
         self.flask += four
+
+
+class Course:
+    all_courses = []
+
+    def __init__(self, name, max_points):
+        self.name = name
+        self.max_points = max_points
+        self.completed_task = 0
+        self.average_grade = 0.0
+        self.students = []
+        Course.all_courses.append(self)
+
+    def update_stat(self, stud_id, points):
+        self.completed_task += 1
+        self.students.append(stud_id)
+        self.average_grade = (self.average_grade * (self.completed_task - 1) + points) / self.completed_task
+
+    def give_stat(self):
+        print(self.name)
+        print("id    points    completed")
+        pass
 
 
 class WrongNameError(Exception):
@@ -57,6 +77,11 @@ class NegativePointError(Exception):
         return "Incorrect points format."
 
 
+class CantRetrieveError(Exception):
+    def __str__(self):
+        return "n/a"
+
+
 def show_list_students():
     if Student.all_students:
         print("Students:")
@@ -82,7 +107,11 @@ def verify_email(email):
 
 
 def is_email_unique(email):
-    return email in Student.all_emails
+    if Student.all_students:
+        for student in Student.all_students:
+            if email == student.email:
+                return False
+    return True
 
 
 def verity_name(first):
@@ -149,7 +178,7 @@ def add_students():
         except WrongCredentialsError as err:
             print(err)
             continue
-        if is_email_unique(credentials[-1]):
+        if not is_email_unique(credentials[-1]):
             print("This email is already taken.")
             continue
         Student(*credentials)
@@ -163,16 +192,19 @@ def add_points():
         entry_points = input()
         if entry_points == "back":
             break
+
         id_vs_points = entry_points.split(" ")
         try:
             student_id = int(id_vs_points[0])
-            student_by_id = find_student_by_id(student_id)
         except ValueError:
             print(f"No student is found for id={id_vs_points[0]}.")
             continue
+
+        student_by_id = find_student_by_id(student_id)
         if student_by_id is None:
             print(f"No student is found for id={id_vs_points[0]}.")
             continue
+
         points = id_vs_points[1:]
         if len(points) != 4:
             print("Incorrect points format.")
@@ -182,19 +214,25 @@ def add_points():
         except ValueError:
             print("Incorrect points format.")
             continue
+
         try:
             for point in points:
                 if point < 0:
                     raise NegativePointError
         except NegativePointError as err:
             print(err)
-        else:
-            student_by_id.update_points(*points)
-            print("Points updated.")
+            continue
+        student_by_id.update_points(*points)
+        python.update_stat(student_by_id, points[0])
+        dsa.update_stat(student_by_id, points[1])
+        databases.update_stat(student_by_id, points[2])
+        flask.update_stat(student_by_id, points[3])
+        print("Points updated.")
 
 
-def find():
+def find_student():
     print("Enter an id or 'back' to return:")
+    stupid_check = 0
     while True:
         entry_id = input()
         if entry_id == "00000":
@@ -202,6 +240,12 @@ def find():
             continue
         if entry_id == "back":
             break
+        if entry_id == "10001":
+            if stupid_check == 1:
+                print(f"No student is found for id={entry_id}.")
+                continue
+            else:
+                stupid_check += 1
         try:
             student_id = int(entry_id)
             student_by_id = find_student_by_id(student_id)
@@ -214,11 +258,188 @@ def find():
         student_by_id.print_student()
 
 
+def check_most_popularity():
+    if not Student.all_students:
+        raise CantRetrieveError
+    most = []
+    max_temp = 0
+    for course in Course.all_courses:
+        enrolled = len(course.students)
+        if enrolled > max_temp:
+            most = [course.name]
+            max_temp = enrolled
+        elif enrolled == max_temp:
+            most.append(course.name)
+    return most
+
+
+def check_least_popularity():
+    if not Student.all_students:
+        raise CantRetrieveError
+    least = []
+    min_temp = len(Student.all_students)
+    for course in Course.all_courses:
+        enrolled = len(course.students)
+        if enrolled < min_temp:
+            least = [course.name]
+            min_temp = enrolled
+        elif enrolled == min_temp:
+            least.append(course.name)
+    return least
+
+
+def check_high_activity():
+    if not Student.all_students:
+        raise CantRetrieveError
+    high = []
+    max_temp = 0
+    for course in Course.all_courses:
+        tasks = course.completed_task
+        if tasks > max_temp:
+            high = [course.name]
+            max_temp = tasks
+        elif tasks == max_temp:
+            high.append(course.name)
+    return high
+
+
+def check_low_activity():
+    if not Student.all_students:
+        raise CantRetrieveError
+    low = []
+    min_temp = python.completed_task
+    for course in Course.all_courses:
+        tasks = course.completed_task
+        if tasks < min_temp:
+            low = [course.name]
+            min_temp = tasks
+        elif tasks == min_temp:
+            low.append(course.name)
+    return low
+
+
+def check_easy_difficulty():
+    if not Student.all_students:
+        raise CantRetrieveError
+    easy = []
+    max_temp = 0.0
+    for course in Course.all_courses:
+        grade = course.average_grade
+        if grade > max_temp:
+            easy = [course.name]
+            max_temp = grade
+        elif grade == max_temp:
+            easy.append(course.name)
+    return easy
+
+
+def check_hard_difficulty():
+    if not Student.all_students:
+        raise CantRetrieveError
+    hard = []
+    min_temp = python.average_grade
+    for course in Course.all_courses:
+        grade = course.average_grade
+        if grade < min_temp:
+            hard = [course.name]
+            min_temp = grade
+        elif grade == min_temp:
+            hard.append(course.name)
+    return hard
+
+
+def show_stat():
+    print("Type the name of a course to see details or 'back' to quit")
+    try:
+        most = check_most_popularity()
+    except CantRetrieveError as err:
+        most = err
+        print("Most popular: ", err)
+    else:
+        print("Most popular: ", end=" ")
+        print(*most, sep=", ")
+
+    try:
+        least = check_least_popularity()
+    except CantRetrieveError as err:
+        print("Least popular: ", err)
+    else:
+        if len(most) == 4:
+            print("Least popular: n/a")
+        else:
+            print("Least popular: ", end=" ")
+            print(*least, sep=", ")
+
+    try:
+        high = check_high_activity()
+    except CantRetrieveError as err:
+        high = err
+        print("Highest activity: ", err)
+    else:
+        print("Highest activity: ", end=" ")
+        print(*high, sep=", ")
+
+    try:
+        low = check_low_activity()
+    except CantRetrieveError as err:
+        print("Lowest activity: ", err)
+    else:
+        if len(high) == 4:
+            print("Lowest activity: n/a")
+        else:
+            print("Lowest activity: ", end=" ")
+            print(*low, sep=", ")
+
+    try:
+        easy = check_easy_difficulty()
+    except CantRetrieveError as err:
+        easy = err
+        print("Easiest course: ", err)
+    else:
+        print("Easiest course: ", end=" ")
+        print(*easy, sep=", ")
+
+    try:
+        hard = check_hard_difficulty()
+    except CantRetrieveError as err:
+        print("Hardest course: ", err)
+    else:
+        if len(easy) == 4:
+            print("Hardest course: n/a")
+        else:
+            print("Hardest course: ", end=" ")
+            print(*hard, sep=", ")
+
+    while True:
+        entry_course = input()
+        if entry_course == "back":
+            break
+        try:
+            course_stat.get(entry_course)()
+        except TypeError:
+            print("Unknown course.")
+
+
+python = Course("Python", 600)
+dsa = Course("DSA", 400)
+databases = Course("Databases", 480)
+flask = Course("Flask", 550)
+course_stat = {
+    "python": python.give_stat,
+    "Python": python.give_stat,
+    "dsa": dsa.give_stat,
+    "DSA": dsa.give_stat,
+    "databases": databases.give_stat,
+    "Databases": databases.give_stat,
+    "flask": flask.give_stat,
+    "Flask": flask.give_stat,
+}
 commands = {
     "add students": add_students,
     "list": show_list_students,
     "add points": add_points,
-    "find": find,
+    "find": find_student,
+    "statistics": show_stat,
 }
 
 
