@@ -34,7 +34,7 @@ class Student:
             "Python": self.python,
             "DSA": self.dsa,
             "Databases": self.databases,
-            "Flask":self.flask,
+            "Flask": self.flask,
         }
         return points.get(course)
 
@@ -46,7 +46,7 @@ class Course:
         self.name = name
         self.max_points = max_points
         self.completed_task = 0
-        self.average_grade = 0.0
+        self.average_grade = 0
         self.students = []
         Course.all_courses.append(self)
 
@@ -58,15 +58,15 @@ class Course:
     def give_stat(self):
         print(self.name)
         print("id    points    completed")
-        data = {}
+        stat = {}
         for student_id in self.students:
             student_by_id = find_student_by_id(student_id)
             points_sum = student_by_id.get_points(self.name)
             progress = round(points_sum / self.max_points * 100, 1)
-            data[student_id] = (points_sum, progress)
-        sorted_data = sorted(data.items(), key=lambda x: x[1][0], reverse=True)
-        for value in sorted_data:
-            print("{:<5} {: <9} {}%".format(value[0], value[1][0], value[1][1]))
+            stat[student_id] = (points_sum, progress)
+        sorted_stat = sorted(stat.items(), key=lambda x: x[1][0], reverse=True)
+        for value in sorted_stat:
+            print("{0:<5} {1: <9} {2}%".format(value[0], value[1][0], value[1][1]))
 
 
 class WrongNameError(Exception):
@@ -339,7 +339,7 @@ def check_easy_difficulty():
     if not Student.all_students:
         raise CantRetrieveError
     easy = []
-    max_temp = 0.0
+    max_temp = 0
     for course in Course.all_courses:
         grade = course.average_grade
         if grade > max_temp:
