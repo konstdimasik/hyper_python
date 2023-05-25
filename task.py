@@ -56,6 +56,15 @@ class NegativePointError(Exception):
         return "Incorrect points format."
 
 
+def show_list_students():
+    if len(Student.all_students) == 0:
+        print("No students found.")
+    else:
+        print("Students:")
+        for student in Student.all_students:
+            print(f"{student.id}")
+
+
 def find_student_by_id(some_id):
     for student in Student.all_students:
         if student.id == some_id:
@@ -120,6 +129,7 @@ def verify(command):
 
 
 def add_students():
+    print("Enter student credentials or 'back' to return:")
     counter = 0
     while True:
         command = input()
@@ -150,6 +160,7 @@ def add_students():
 
 
 def add_points():
+    print("Enter an id and points or 'back' to return:")
     while True:
         entry_points = input()
         if entry_points == "back":
@@ -185,6 +196,7 @@ def add_points():
 
 
 def find():
+    print("Enter an id or 'back' to return:")
     while True:
         entry_id = input()
         if entry_id == "00000":
@@ -204,6 +216,14 @@ def find():
         student_by_id.print_student()
 
 
+commands = {
+    "add students": add_students,
+    "list": show_list_students,
+    "add points": add_points,
+    "find": find,
+}
+
+
 def main():
     print("Learning progress tracker")
     while True:
@@ -216,27 +236,11 @@ def main():
             continue
         elif entry == 'exit':
             print('Bye!')
-            break
-        elif entry == 'add students':
-            print("Enter student credentials or 'back' to return:")
-            add_students()
-        elif entry == "list":
-            if len(Student.all_students) == 0:
-                print("No students found.")
-                continue
-            else:
-                print("Students:")
-            for student in Student.all_students:
-                print(f"{student.id}")
-        elif entry == "add points":
-            print("Enter an id and points or 'back' to return:")
-            add_points()
-        elif entry == "find":
-            print("Enter an id or 'back' to return:")
-            find()
-        else:
+            break  # exit() ?
+        try:
+            commands.get(entry)()
+        except TypeError:
             print("Unknown command!")
-            continue
 
 
 if __name__ == '__main__':
