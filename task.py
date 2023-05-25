@@ -1,5 +1,5 @@
-import string
 import re
+import string
 
 
 class Student:
@@ -22,7 +22,8 @@ class Student:
         Student.all_students.append(self)
 
     def print_student(self):
-        print(f"{self.id} points: Python={self.python}; DSA={self.dsa}; Databases={self.database}; Flask={self.flask}")
+        print(f"{self.id} points: Python={self.python}; DSA={self.dsa}; ", end="")
+        print(f"Databases={self.database}; Flask={self.flask}")
 
     def update_points(self, one, two, three, four):
         self.python += one
@@ -57,12 +58,12 @@ class NegativePointError(Exception):
 
 
 def show_list_students():
-    if len(Student.all_students) == 0:
-        print("No students found.")
-    else:
+    if Student.all_students:
         print("Students:")
         for student in Student.all_students:
             print(f"{student.id}")
+    else:
+        print("No students found.")
 
 
 def find_student_by_id(some_id):
@@ -77,9 +78,7 @@ def verify_email(email):
     if len(email_parts) != 2:
         return False
     tail_parts = email_parts[1].split('.')
-    if len(tail_parts) != 2:
-        return False
-    return True
+    return len(tail_parts) == 2
 
 
 def is_email_unique(email):
@@ -120,10 +119,10 @@ def verify(command):
         raise WrongNameError
 
     second = command_parts[1:-1]
-    if not verify_lastname(second):
-        raise WrongLastNameError
-    else:
+    if verify_lastname(second):
         second = " ".join(second)
+    else:
+        raise WrongLastNameError
 
     return first, second, email
 
@@ -150,13 +149,12 @@ def add_students():
         except WrongCredentialsError as err:
             print(err)
             continue
-        else:
-            if is_email_unique(credentials[-1]):
-                print("This email is already taken.")
-                continue
-            Student(*credentials)
-            counter += 1
-            print("The student has been added.")
+        if is_email_unique(credentials[-1]):
+            print("This email is already taken.")
+            continue
+        Student(*credentials)
+        counter += 1
+        print("The student has been added.")
 
 
 def add_points():
