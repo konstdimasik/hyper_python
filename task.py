@@ -2,6 +2,12 @@ import re
 import string
 
 
+PYTHON_MAX_POINTS = 600
+DSA_MAX_POINTS = 400
+DB_MAX_POINTS = 480
+FLASK_MAX_POINTS = 550
+
+
 class Student:
     all_students = []
     id_counter = 10000
@@ -15,9 +21,22 @@ class Student:
         self.dsa = 0
         self.databases = 0
         self.flask = 0
+        self.notify_status = {
+            "Python": "not yet",
+            "DSA": "not yet",
+            "Databases": "not yet",
+            "Flask": "not yet",
+        }
 
         Student.id_counter += 1
         Student.all_students.append(self)
+
+    def massage(self, course):
+        print("To: {0}".format(self.email))
+        print("Re: Your Learning Progress")
+        fullname = self.firstname + " " + self.lastname
+        print("Hello, {0}! You have accomplished our {1} course!".format(fullname, course))
+        self.notify_status[course] = "notified"
 
     def print_student(self):
         print(f"{self.id} points: Python={self.python}; DSA={self.dsa}; ", end="")
@@ -28,6 +47,17 @@ class Student:
         self.dsa += two
         self.databases += three
         self.flask += four
+        self.check_status()
+
+    def check_status(self):
+        if self.python >= PYTHON_MAX_POINTS and self.notify_status["Python"] != "notified":
+            self.notify_status["Python"] = "need to notify"
+        if self.dsa >= DSA_MAX_POINTS and self.notify_status["DSA"] != "notified":
+            self.notify_status["DSA"] = "need to notify"
+        if self.databases >= DB_MAX_POINTS and self.notify_status["Databases"] != "notified":
+            self.notify_status["Databases"] = "need to notify"
+        if self.flask >= FLASK_MAX_POINTS and self.notify_status["Flask"] != "notified":
+            self.notify_status["Flask"] = "need to notify"
 
     def get_points(self, course):
         points = {
@@ -437,6 +467,19 @@ def show_stat():
             print("Unknown course.")
 
 
+def notify():
+    students_notified_counter = 0
+    for student in Student.all_students:
+        student_notified = False
+        for course in Course.all_courses:
+            if student.notify_status[course.name] == "need to notify":
+                student_notified = True
+                student.massage(course.name)
+        if student_notified:
+            students_notified_counter += 1
+    print("Total {0} students have been notified.".format(students_notified_counter))
+
+
 python = Course("Python", 600)
 dsa = Course("DSA", 400)
 databases = Course("Databases", 480)
@@ -451,12 +494,13 @@ course_stat = {
     "flask": flask.give_stat,
     "Flask": flask.give_stat,
 }
-commands = {
+main_commands = {
     "add students": add_students,
     "list": show_list_students,
     "add points": add_points,
     "find": find_student,
     "statistics": show_stat,
+    "notify": notify,
 }
 
 
@@ -474,7 +518,7 @@ def main():
             print('Bye!')
             break  # exit() ?
         try:
-            commands.get(entry)()
+            main_commands.get(entry)()
         except TypeError:
             print("Unknown command!")
 
