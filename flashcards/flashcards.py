@@ -1,4 +1,5 @@
-from typing import List, Set, Optional
+from random import choice
+from typing import List, Optional
 
 
 class InvalidAnswerError(Exception):
@@ -10,9 +11,16 @@ class InvalidCardError(Exception):
 
 
 class Card:
+    cards = []
+    card_terms = set()
+    card_definitions = set()
+
     def __init__(self, term: str, definition: str) -> None:
         self._term = term
         self._definition = definition
+        Card.cards.append(self)
+        Card.card_terms.add(term)
+        Card.card_definitions.add(definition)
 
     def check_answer(self, answer: str) -> None:
         if answer != self._definition:
@@ -24,40 +32,40 @@ class Card:
     def get_definition(self) -> str:
         return self._definition
 
-def read_term(num: int, terms: Set[str]) -> str:
-    term = input(f"The term for card #{num}:\n")
-    while term in terms:
-        print(f'The term "{term}" already exists. Try again:')
+
+def read_term() -> str:
+    term = input("The card:\n")
+    while term in Card.card_terms:
+        print(f'The card "{term}" already exists. Try again:')
         term = input()
-    terms.add(term)
+    Card.card_terms.add(term)
     return term
 
 
-def read_definition(num: int, definitions: Set[str]) -> str:
-    definition = input(f"The definition for card #{num}:\n")
-    while definition in definitions:
+def read_definition() -> str:
+    definition = input("The definition for card:\n")
+    while definition in Card.card_definitions:
         print(f'The definition "{definition}" already exists. Try again:')
         definition = input()
-    definitions.add(definition)
+    Card.card_definitions.add(definition)
     return definition
 
 
-def read_card(num: int, terms: Set[str], definitions: Set[str]) -> Card:
-    term = read_term(num, terms)
-    definition = read_definition(num, definitions)
+def read_card() -> None:
+    term = read_term()
+    definition = read_definition()
+    Card(term, definition)
+    print(f'The pair ("{term}":"{definition}") has been added.')
+    return None
 
-    return Card(term, definition)
 
-
-def read_cards() -> List[Card]:
-    count = int(input("Input the number of cards:\n"))
-    cards = []
-    card_terms = set()
-    card_definitions = set()
-    for i in range(1, count + 1):
-        card = read_card(i, card_terms, card_definitions)
-        cards.append(card)
-    return cards
+def remove_card() -> None:
+    term = input('Which card?\n')
+    if term in Card.card_terms:
+        Card.card_terms.discard(term)
+        print('The card has been removed.')
+    else:
+        print(f'Can\'t remove "{term}": there is no such card.')
 
 
 def read_answer(term: str) -> str:
@@ -86,10 +94,12 @@ def check_answer(card: Card, answer: str, cards: List[Card]) -> None:
         print('Correct!')
 
 
-def test_user_in_loop(cards: List[Card]) -> None:
-    for card in cards:
+def test_user_in_loop() -> None:
+    question_counter = int(input('How many times to ask?\n'))
+    for _ in range(question_counter):
+        card = choice(Card.cards)
         answer = read_answer(card.get_term())
-        check_answer(card, answer, cards)
+        check_answer(card, answer, Card.cards)
 
 
 def exit_script():
@@ -101,27 +111,21 @@ main_commands = {
     "exit": exit_script,
     "add": read_card,
     "remove": remove_card,
-    "import": import_cards,
-    "export": export_cards,
+    # "import": import_cards,
+    # "export": export_cards,
     "ask": test_user_in_loop,
 }
 
+
 def main():
-    cards = []
-    card_terms = set()
-    card_definitions = set()
-
-
-
     while True:
-        entry = input("Input the action (add, remove, import, export, ask, exit):")
+        entry = input("Input the action (add, remove, import, export, ask, exit):\n")
 
         try:
             main_commands.get(entry)()
-        except TypeError:
-            print("unknown command!")
+        except TypeError as error:
+            print("unknown command!\n", error)
 
 
 if __name__ == '__main__':
     main()
-    
