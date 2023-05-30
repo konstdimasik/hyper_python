@@ -27,7 +27,7 @@ class Card:
 def read_term(num: int, terms: Set[str]) -> str:
     term = input(f"The term for card #{num}:\n")
     while term in terms:
-        print(f'The term {term} already exists. Try again:')
+        print(f'The term "{term}" already exists. Try again:')
         term = input()
     terms.add(term)
     return term
@@ -36,7 +36,7 @@ def read_term(num: int, terms: Set[str]) -> str:
 def read_definition(num: int, definitions: Set[str]) -> str:
     definition = input(f"The definition for card #{num}:\n")
     while definition in definitions:
-        print(f'The definition {definition} already exists. Try again:')
+        print(f'The definition "{definition}" already exists. Try again:')
         definition = input()
     definitions.add(definition)
     return definition
@@ -92,9 +92,34 @@ def test_user_in_loop(cards: List[Card]) -> None:
         check_answer(card, answer, cards)
 
 
+def exit_script():
+    print("Bye bye!")
+    exit()
+
+
+main_commands = {
+    "exit": exit_script,
+    "add": read_card,
+    "remove": remove_card,
+    "import": import_cards,
+    "export": export_cards,
+    "ask": test_user_in_loop,
+}
+
 def main():
-    cards = read_cards()
-    test_user_in_loop(cards)
+    cards = []
+    card_terms = set()
+    card_definitions = set()
+
+
+
+    while True:
+        entry = input("Input the action (add, remove, import, export, ask, exit):")
+
+        try:
+            main_commands.get(entry)()
+        except TypeError:
+            print("unknown command!")
 
 
 if __name__ == '__main__':
