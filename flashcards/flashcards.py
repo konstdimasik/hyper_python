@@ -1,7 +1,7 @@
 from random import choice
 from typing import List, Optional
-from classcard import Card
-from classcard import InvalidAnswerError
+
+from classcard import Card, InvalidAnswerError
 
 
 class InvalidCardError(Exception):
@@ -22,7 +22,6 @@ class FlashcardGame:
             "ask": self.test_user_in_loop,
         }
 
-
     def read_term(self) -> str:
         term = input("The card:\n")
         while term in self.card_terms:
@@ -31,7 +30,6 @@ class FlashcardGame:
         self.card_terms.add(term)
         return term
 
-
     def read_definition(self) -> str:
         definition = input("The definition for card:\n")
         while definition in self.card_definitions:
@@ -39,7 +37,6 @@ class FlashcardGame:
             definition = input()
         self.card_definitions.add(definition)
         return definition
-
 
     def add_card(self) -> None:
         term = self.read_term()
@@ -50,7 +47,6 @@ class FlashcardGame:
         print(f'The pair ("{term}":"{definition}") has been added.')
         return None
 
-
     def remove_card(self) -> None:
         term = input('Which card?\n')
         if term in self.card_terms:
@@ -59,18 +55,15 @@ class FlashcardGame:
         else:
             print(f'Can\'t remove "{term}": there is no such card.')
 
-
     def read_answer(self, term: str) -> str:
         answer = input(f'Print the definition of "{term}":\n')
         return answer
-
 
     def find_term(self, definition: str, cards: List[Card]) -> Optional[str]:
         for card in cards:
             if definition == card.get_definition():
                 return card.get_term()
         return None
-
 
     def check_answer(self, card: Card, answer: str, cards: List[Card]) -> None:
         try:
@@ -85,7 +78,6 @@ class FlashcardGame:
         else:
             print('Correct!')
 
-
     def test_user_in_loop(self) -> None:
         question_counter = int(input('How many times to ask?\n'))
         for _ in range(question_counter):
@@ -93,11 +85,9 @@ class FlashcardGame:
             answer = self.read_answer(card.get_term())
             self.check_answer(card, answer, self.cards)
 
-
     def exit_script(self) -> None:
         print("Bye bye!")
         exit()
-
 
     def run(self) -> None:
         while True:
