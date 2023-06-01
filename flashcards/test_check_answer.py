@@ -1,6 +1,6 @@
 import pytest
-from flashcards import Card
-from flashcards import InvalidAnswerError
+from classcard import Card
+from classcard import InvalidAnswerError
 
 
 def test_happy_path():
