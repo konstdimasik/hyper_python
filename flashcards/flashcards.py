@@ -10,17 +10,20 @@ class InvalidCardError(Exception):
     pass
 
 
-class Card:
+class FlashcardGame:
     cards = []
     card_terms = set()
     card_definitions = set()
 
+
+    
+class Card:
     def __init__(self, term: str, definition: str) -> None:
         self._term = term
         self._definition = definition
-        Card.cards.append(self)
-        Card.card_terms.add(term)
-        Card.card_definitions.add(definition)
+        FlashcardGame.cards.append(self)
+        FlashcardGame.card_terms.add(term)
+        FlashcardGame.card_definitions.add(definition)
 
     def check_answer(self, answer: str) -> None:
         if answer != self._definition:
@@ -35,19 +38,19 @@ class Card:
 
 def read_term() -> str:
     term = input("The card:\n")
-    while term in Card.card_terms:
+    while term in FlashcardGame.card_terms:
         print(f'The card "{term}" already exists. Try again:')
         term = input()
-    Card.card_terms.add(term)
+    FlashcardGame.card_terms.add(term)
     return term
 
 
 def read_definition() -> str:
     definition = input("The definition for card:\n")
-    while definition in Card.card_definitions:
+    while definition in FlashcardGame.card_definitions:
         print(f'The definition "{definition}" already exists. Try again:')
         definition = input()
-    Card.card_definitions.add(definition)
+    FlashcardGame.card_definitions.add(definition)
     return definition
 
 
@@ -61,8 +64,8 @@ def read_card() -> None:
 
 def remove_card() -> None:
     term = input('Which card?\n')
-    if term in Card.card_terms:
-        Card.card_terms.discard(term)
+    if term in FlashcardGame.card_terms:
+        FlashcardGame.card_terms.discard(term)
         print('The card has been removed.')
     else:
         print(f'Can\'t remove "{term}": there is no such card.')
@@ -89,7 +92,7 @@ def check_answer(card: Card, answer: str, cards: List[Card]) -> None:
             print(f'Wrong. The right answer is "{card.get_definition()}"')
         else:
             print(f'Wrong. The right answer is "{card.get_definition()}"'
-                f', but your definition is correct for "{right_term}".')
+                  f', but your definition is correct for "{right_term}".')
     else:
         print('Correct!')
 
@@ -97,9 +100,9 @@ def check_answer(card: Card, answer: str, cards: List[Card]) -> None:
 def test_user_in_loop() -> None:
     question_counter = int(input('How many times to ask?\n'))
     for _ in range(question_counter):
-        card = choice(Card.cards)
+        card = choice(FlashcardGame.cards)
         answer = read_answer(card.get_term())
-        check_answer(card, answer, Card.cards)
+        check_answer(card, answer, FlashcardGame.cards)
 
 
 def exit_script():
