@@ -1,7 +1,6 @@
 import re
 import string
 
-
 PYTHON_MAX_POINTS = 600
 DSA_MAX_POINTS = 400
 DB_MAX_POINTS = 480
