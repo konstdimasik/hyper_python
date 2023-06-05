@@ -20,6 +20,9 @@ class FlashcardGame:
             "import": self.import_cards,
             "export": self.export_cards,
             "ask": self.test_user_in_loop,
+            # "log": self.save_log,
+            "hardest card": self.hardest_card,
+            # "reset stats": self.reset_stats,
         }
 
     def read_term(self) -> str:
@@ -38,8 +41,8 @@ class FlashcardGame:
         self.card_definitions.add(definition)
         return definition
 
-    def add_card(self, term: str, definition: str) -> None:
-        self.cards.append(Card(term, definition))
+    def add_card(self, term: str, definition: str, mistakes: int = 0) -> None:
+        self.cards.append(Card(term, definition, mistakes))
         self.card_terms.add(term)
         self.card_definitions.add(definition)
 
@@ -77,11 +80,12 @@ class FlashcardGame:
                 return card.get_term()
         return None
 
-    def check_answer(self, card: Card, answer: str, cards: List[Card]) -> None:
+    def check_answer(self, card: Card, answer: str) -> None:
         try:
             card.check_answer(answer)
         except InvalidAnswerError:
             right_term = self.find_term_from_definition(answer)
+            card.increase_mistakes()
             if right_term is None:
                 print(f'Wrong. The right answer is "{card.get_definition()}"')
             else:
@@ -92,13 +96,13 @@ class FlashcardGame:
 
     def test_user_in_loop(self) -> None:
         question_counter = int(input('How many times to ask?\n'))
-        # if len(self.cards) == 0:
-        #     print("You don't have cards yet!")
-        #     return
+        if len(self.cards) == 0:
+            print("You don't have cards yet!")
+            return
         for _ in range(question_counter):
             card = choice(self.cards)
             answer = self.read_answer(card.get_term())
-            self.check_answer(card, answer, self.cards)
+            self.check_answer(card, answer)
 
     def exit_script(self) -> None:
         print("Bye bye!")
@@ -109,23 +113,54 @@ class FlashcardGame:
         with open(filename, 'w', encoding='utf-8') as file_for_export:
             counter = 0
             for card in self.cards:
-                file_for_export.write(card.get_term() + ':' + card.get_definition() + '\n')
+                line = ':'.join([card.get_term(), card.get_definition(), str(card.get_mistakes())])
+                file_for_export.write(line + '\n')
                 counter += 1
         print(f'{counter} cards have been saved.')
 
     def import_cards(self) -> None:
         filename = input("File name:\n")
-        with open(filename, 'r', encoding='utf-8') as file_for_import:
-            counter = 0
-            for line in file_for_import:
-                term, definition = line.strip().split(':')
-                self.add_card(term, definition)
-                counter += 1
-        print(f'{counter} cards have been saved.')
+        try:
+            with open(filename, 'r', encoding='utf-8') as file_for_import:
+                counter = 0
+                for line in file_for_import:
+                    term, definition, mistakes = line.strip().split(':')
+                    self.add_card(term, definition, int(mistakes))
+                    counter += 1
+            print(f'{counter} cards have been loaded.')
+        except FileNotFoundError:
+            print('File not found.') 
+
+    def compose_hardest_message(self, terms: List[str], mistakes: int) -> str:
+        if mistakes == 1:
+            error_word = 'error'
+        else:
+            error_word = 'errors'
+
+        if len(terms) == 0:
+            return 'There are no cards with errors.'
+        elif len(terms) == 1:
+            return f'The hardest card is "{terms[0]}". You have {mistakes} {error_word} answering it.'
+        else:
+            hardest_terms = ', '.join(terms)
+            return f'The hardest cards are {hardest_terms}. You have {mistakes} {error_word} answering them.'
+
+    def hardest_card(self) -> None:
+        hardest_cards = []
+        max_mistakes = 0        
+        for card in self.cards:
+            card_mistakes = card.get_mistakes()
+            if card_mistakes > max_mistakes:
+                hardest_cards = [card.get_term()]
+                max_mistakes = card_mistakes
+            elif card_mistakes == max_mistakes:
+                hardest_cards.append(card.get_term())
+        message = self.compose_hardest_message(hardest_cards, max_mistakes)
+        print(message)
 
     def run(self) -> None:
         while True:
-            entry = input("Input the action (add, remove, import, export, ask, exit):\n")
+            entry = input("Input the action (add, remove, import, export, ask, exit, log, hardest card, reset stats):\n")
 
             try:
                 self.commands.get(entry)()

@@ -3,9 +3,10 @@ class InvalidAnswerError(Exception):
 
 
 class Card:
-    def __init__(self, term: str, definition: str) -> None:
+    def __init__(self, term: str, definition: str, mistakes: int = 0) -> None:
         self._term = term
         self._definition = definition
+        self._mistakes = mistakes
 
     def check_answer(self, answer: str) -> None:
         if answer != self._definition:
@@ -16,3 +17,9 @@ class Card:
 
     def get_definition(self) -> str:
         return self._definition
+
+    def get_mistakes(self) -> int:
+        return self._mistakes
+
+    def increase_mistakes(self) -> None:
+        self._mistakes += 1
