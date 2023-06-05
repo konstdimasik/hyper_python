@@ -21,5 +21,8 @@ class Card:
     def get_mistakes(self) -> int:
         return self._mistakes
 
+    def set_mistakes(self, mistakes: int) -> None:
+        self._mistakes = mistakes
+
     def increase_mistakes(self) -> None:
         self._mistakes += 1
