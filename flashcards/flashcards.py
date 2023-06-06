@@ -11,8 +11,24 @@ class InvalidCardError(Exception):
     pass
 
 
+class IO:
+    def input(self, msg: str = '') -> str:
+        raise NotImplementedError
+
+    def print(self, msg: str) -> None:
+        raise NotImplementedError
+
+
+class StdIO(IO):
+    def input(self, msg: str = '') -> str:
+        return input(msg)
+
+    def print(self, msg: str) -> None:
+        print(msg)
+
+
 class FlashcardGame:
-    def __init__(self, import_from: str, export_to: str):
+    def __init__(self, io: IO, import_from: str, export_to: str):
         self.import_from = import_from
         self.export_to = export_to
         self.cards = []
@@ -29,6 +45,7 @@ class FlashcardGame:
             "hardest card": self.hardest_card,
             "reset stats": self.reset_stats,
         }
+        self.io = io
         logger = logging.getLogger('FlashcardGame')
         logger.setLevel(logging.INFO)
         fh = logging.FileHandler('flashcardgame.log', 'w')
@@ -39,18 +56,18 @@ class FlashcardGame:
 
     def input(self, msg: str = '') -> str:
         self.logger.info(msg.strip())
-        return input(msg)
+        return self.io.input(msg)
 
     def print(self, msg: str) -> None:
         self.logger.info(msg)
-        print(msg)
+        self.io.print(msg)
 
     def read_term(self) -> str:
         term = self.input("The card:\n")
         self.logger.info(term)
         while term in self.card_terms:
             self.print(f'The card "{term}" already exists. Try again:')
-            term = self.input()
+            term = self.io.input()
         self.card_terms.add(term)
         return term
 
@@ -214,12 +231,12 @@ class FlashcardGame:
         if self.import_from:
             self.import_cards(self.import_from)
         while True:
-            entry = self.input("Input the action (add, remove, import, export, ask, exit, log, hardest card, reset stats)\n")
+            entry = self.input("Input the action (add, remove, import, export, ask, exit, log, hardest card, reset stats):\n")
 
             try:
                 self.commands.get(entry)()
             except TypeError:
-                self.print("unknown command!\n")
+                self.print("unknown command!")
 
 
 def main():
@@ -238,7 +255,7 @@ def main():
     )
     args = parser.parse_args()
 
-    game = FlashcardGame(args.import_from, args.export_to)
+    game = FlashcardGame(StdIO(), args.import_from, args.export_to)
     game.run()
 
 
