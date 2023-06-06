@@ -1,6 +1,7 @@
 import logging
-from random import choice
+import argparse
 from shutil import copyfile
+from random import choice
 from typing import List, Optional
 
 from classcard import Card, InvalidAnswerError
@@ -11,7 +12,9 @@ class InvalidCardError(Exception):
 
 
 class FlashcardGame:
-    def __init__(self):
+    def __init__(self, import_from: str, export_to: str):
+        self.import_from = import_from
+        self.export_to = export_to
         self.cards = []
         self.card_terms = set()
         self.card_definitions = set()
@@ -19,8 +22,8 @@ class FlashcardGame:
             "exit": self.exit_script,
             "add": self.read_card,
             "remove": self.remove_card,
-            "import": self.import_cards,
-            "export": self.export_cards,
+            "import": self.ask_import_filename,
+            "export": self.ask_export_filename,
             "ask": self.test_user_in_loop,
             "log": self.save_log,
             "hardest card": self.hardest_card,
@@ -118,7 +121,7 @@ class FlashcardGame:
     def test_user_in_loop(self) -> None:
         question_counter = int(self.input('How many times to ask?\n'))
         self.logger.info(question_counter)
-        if not len(self.cards):
+        if len(self.cards) == 0:
             self.print("You don't have cards yet!")
             return
         for _ in range(question_counter):
@@ -128,11 +131,15 @@ class FlashcardGame:
 
     def exit_script(self) -> None:
         self.print("Bye bye!")
+        if self.export_to:
+            self.export_cards(self.export_to)
         exit()
-
-    def export_cards(self) -> None:
+    def ask_export_filename(self) -> None:
         filename = self.input("File name:\n")
         self.logger.info(filename)
+        self.export_cards(filename)
+
+    def export_cards(self, filename: str) -> None:
         with open(filename, 'w', encoding='utf-8') as file_for_export:
             counter = 0
             for card in self.cards:
@@ -147,9 +154,12 @@ class FlashcardGame:
         self.card_definitions.discard(card.get_definition)
         self.cards.remove(card)
 
-    def import_cards(self) -> None:
+    def ask_import_filename(self) -> None:
         filename = self.input("File name:\n")
         self.logger.info(filename)
+        self.import_cards(filename)
+
+    def import_cards(self, filename: str) -> None:
         try:
             with open(filename, 'r', encoding='utf-8') as file_for_import:
                 counter = 0
@@ -170,7 +180,6 @@ class FlashcardGame:
             error_word = 'error'
         else:
             error_word = 'errors'
-
         if len(terms) == 1:
             return f'The hardest card is "{terms[0]}". You have {mistakes} {error_word} answering it.'
         terms = ['"' + x + '"' for x in terms]
@@ -179,7 +188,7 @@ class FlashcardGame:
 
     def hardest_card(self) -> None:
         hardest_cards = []
-        max_mistakes = 0
+        max_mistakes = 0        
         for card in self.cards:
             card_mistakes = card.get_mistakes()
             if card_mistakes > max_mistakes:
@@ -202,6 +211,8 @@ class FlashcardGame:
         self.print('The log has been saved.')
 
     def run(self) -> None:
+        if self.import_from:
+            self.import_cards(self.import_from)
         while True:
             entry = self.input("Input the action (add, remove, import, export, ask, exit, log, hardest card, reset stats)\n")
 
@@ -212,7 +223,22 @@ class FlashcardGame:
 
 
 def main():
-    game = FlashcardGame()
+    parser = argparse.ArgumentParser(description="Flashcard Game")
+    parser.add_argument(
+        '--import_from',
+        default='',
+        type=str,
+        help='file name to read the initial card set from'
+    )
+    parser.add_argument(
+        '--export_to',
+        default='',
+        type=str,
+        help='file name to write all cards when finish the game'
+    )
+    args = parser.parse_args()
+
+    game = FlashcardGame(args.import_from, args.export_to)
     game.run()
 
 
