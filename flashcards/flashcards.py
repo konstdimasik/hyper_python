@@ -1,5 +1,6 @@
 import logging
 from random import choice
+from shutil import copyfile
 from typing import List, Optional
 
 from classcard import Card, InvalidAnswerError
@@ -9,24 +10,8 @@ class InvalidCardError(Exception):
     pass
 
 
-class IO:
-    def input(self, msg: str) -> str:
-        raise NotImplementedError
-
-    def print(self, msg: str) -> None:
-        raise NotImplementedError
-
-
-class StdIO(IO):
-    def input(self, msg: str = '') -> str:
-        return input(msg)
-
-    def print(self, msg: str) -> None:
-        print(msg)
-
-
 class FlashcardGame:
-    def __init__(self, io: IO):
+    def __init__(self):
         self.cards = []
         self.card_terms = set()
         self.card_definitions = set()
@@ -41,36 +26,37 @@ class FlashcardGame:
             "hardest card": self.hardest_card,
             "reset stats": self.reset_stats,
         }
-        self.io = io
-        # logger = 
-        # logger = logging.getLogger('FlashcardGame')
-        # logger.setLevel(logging.INFO)
-        # ch = logging.StreamHandler()
-        # log_formatter = logging.Formatter('%(message)s')
-        # ch.setFormatter(log_formatter)
-        # logger.addHandler(ch)
-        # self.logger = logger
+        logger = logging.getLogger('FlashcardGame')
+        logger.setLevel(logging.INFO)
+        fh = logging.FileHandler('flashcardgame.log', 'w')
+        log_formatter = logging.Formatter('%(message)s')
+        fh.setFormatter(log_formatter)
+        logger.addHandler(fh)
+        self.logger = logger
 
     def input(self, msg: str = '') -> str:
-        # logger.info(msg)
-        return self.io.input(msg)
+        self.logger.info(msg.strip())
+        return input(msg)
 
     def print(self, msg: str) -> None:
-        # logger.info(msg)
-        self.io.print(msg)
+        self.logger.info(msg)
+        print(msg)
 
     def read_term(self) -> str:
         term = self.input("The card:\n")
+        self.logger.info(term)
         while term in self.card_terms:
             self.print(f'The card "{term}" already exists. Try again:')
-            term = self.io.input()
+            term = self.input()
         self.card_terms.add(term)
         return term
 
     def read_definition(self) -> str:
         definition = self.input("The definition for card:\n")
+        self.logger.info(definition)
         while definition in self.card_definitions:
             definition = self.input(f'The definition "{definition}" already exists. Try again:')
+            self.logger.info(definition)
         self.card_definitions.add(definition)
         return definition
 
@@ -88,6 +74,7 @@ class FlashcardGame:
 
     def remove_card(self) -> None:
         term = self.input('Which card?\n')
+        self.logger.info(term)
         card = self.find_card_from_term(term)
         if card is None:
             self.print(f'Can\'t remove "{term}": there is no such card.')
@@ -99,6 +86,7 @@ class FlashcardGame:
 
     def read_answer(self, term: str) -> str:
         answer = self.input(f'Print the definition of "{term}":\n')
+        self.logger.info(answer)
         return answer
 
     def find_card_from_term(self, term: str) -> Optional[Card]:
@@ -129,6 +117,7 @@ class FlashcardGame:
 
     def test_user_in_loop(self) -> None:
         question_counter = int(self.input('How many times to ask?\n'))
+        self.logger.info(question_counter)
         if not len(self.cards):
             self.print("You don't have cards yet!")
             return
@@ -143,6 +132,7 @@ class FlashcardGame:
 
     def export_cards(self) -> None:
         filename = self.input("File name:\n")
+        self.logger.info(filename)
         with open(filename, 'w', encoding='utf-8') as file_for_export:
             counter = 0
             for card in self.cards:
@@ -151,13 +141,22 @@ class FlashcardGame:
                 counter += 1
         self.print(f'{counter} cards have been saved.')
 
+    def delete_card(self, term: str) -> None:
+        card = self.find_card_from_term(term)
+        self.card_terms.discard(card.get_term)
+        self.card_definitions.discard(card.get_definition)
+        self.cards.remove(card)
+
     def import_cards(self) -> None:
         filename = self.input("File name:\n")
+        self.logger.info(filename)
         try:
             with open(filename, 'r', encoding='utf-8') as file_for_import:
                 counter = 0
                 for line in file_for_import:
                     term, definition, mistakes = line.strip().split(':')
+                    if term in self.card_terms:
+                        self.delete_card(term)
                     self.add_card(term, definition, int(mistakes))
                     counter += 1
             self.print(f'{counter} cards have been loaded.')
@@ -174,8 +173,9 @@ class FlashcardGame:
 
         if len(terms) == 1:
             return f'The hardest card is "{terms[0]}". You have {mistakes} {error_word} answering it.'
+        terms = ['"' + x + '"' for x in terms]
         hardest_terms = ', '.join(terms)
-        return f'The hardest cards are {hardest_terms}. You have {mistakes} {error_word} answering them.'
+        return f'The hardest cards are "{hardest_terms}. You have {mistakes} {error_word} answering them.'
 
     def hardest_card(self) -> None:
         hardest_cards = []
@@ -197,12 +197,14 @@ class FlashcardGame:
 
     def save_log(self) -> None:
         filename = self.input("File name:\n")
-
+        self.logger.info(filename)
+        copyfile('flashcardgame.log', filename)
         self.print('The log has been saved.')
 
     def run(self) -> None:
         while True:
-            entry = self.input("Input the action (add, remove, import, export, ask, exit, log, hardest card, reset stats):\n")
+            entry = self.input("Input the action (add, remove, import, export, ask, exit, log, hardest card, reset stats)\n")
+
             try:
                 self.commands.get(entry)()
             except TypeError:
@@ -210,7 +212,7 @@ class FlashcardGame:
 
 
 def main():
-    game = FlashcardGame(StdIO())
+    game = FlashcardGame()
     game.run()
 
 
