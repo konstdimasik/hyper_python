@@ -151,6 +151,7 @@ class FlashcardGame:
         if self.export_to:
             self.export_cards(self.export_to)
         exit()
+        
     def ask_export_filename(self) -> None:
         filename = self.input("File name:\n")
         self.logger.info(filename)
