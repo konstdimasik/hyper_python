@@ -1,21 +1,22 @@
-from ascii_art import welcome_screen, game_hub, robot
+from ascii_art import welcome_screen, robot, hub_top, hub_game, hub_bottom
 
 
-class SurvivalGame():
+class GameInterface():
     def __init__(self):
         self._welcome_screen = welcome_screen
         self._game_not_over = True
-        self._main_commands = {
+        self._player_name = ''
+        self._main_menu = {
             'play': self.ask_for_play,
             'exit': self.exit_game,
             'high': self.high_scores,
             'help': self.help,
-            'back': self.run,
+            'back': self.run_main_menu,
         }
-        self._play_commands = {
-            'yes': self.play,
+        self._are_you_ready_menu = {
+            'yes': self.start_the_game,
             'no': self.dont_play,
-            'menu': self.run
+            'menu': self.run_main_menu,
         }
 
     def finish_game(self) -> None:
@@ -30,20 +31,20 @@ class SurvivalGame():
         self.finish_game()
 
     def ask_for_play(self) -> None:
-        name = input('Enter your name:\n')
-        print(f'Greetings, commander {name}!')
-        while True:
+        self._player_name = input('Enter your name:\n')
+        print(f'Greetings, commander {self._player_name}!')
+        while self._game_not_over:
             print('Are you ready to begin?')
             print('[Yes] [No] Return to Main[Menu]')
             ready = input('Your command:\n').lower()
             try:
-                self.play_commands.get(ready)()
+                self._are_you_ready_menu.get(ready)()
             except TypeError:
                 print('Invalid input')
 
-    def play(self) -> None:
-        print(game_hub)
-        self.finish_game()
+    def start_the_game(self) -> None:
+        engine = GameEngine(self)
+        engine.run_the_game()
 
     def dont_play(self) -> None:
         print('How about now.')
@@ -51,22 +52,39 @@ class SurvivalGame():
     def high_scores(self) -> None:
         print('No scores to display.')
         print('[Back]')
-        self.run()
+        self.run_main_menu()
 
-    def run(self) -> None:
+    def run_main_menu(self) -> None:
         print(welcome_screen)
         print('[Play]\n[High] scores\n[Help]\n[Exit]\n')
-        while self.game_not_over:
+        while self._game_not_over:
             entry = input('Your command:\n').lower()
             try:
-                self.main_commands.get(entry)()
+                self._main_menu.get(entry)()
             except TypeError:
                 print('Invalid input')
 
 
+class GameEngine():
+    def __init__(self, interface: GameInterface):
+        self._hub_top = hub_top
+        self._hub_game = hub_game
+        self._hub_bottom = hub_bottom
+        self._interface = interface
+
+    def run_the_game(self) -> None:
+        self.print_game_hub()
+        self._interface.finish_game()
+
+    def print_game_hub(self) -> None:
+        print(self._hub_top)
+        print(self._hub_game)
+        print(self._hub_bottom)
+
+
 def main():
-    game = SurvivalGame()
-    game.run()
+    game = GameInterface()
+    game.run_main_menu()
 
 
 if __name__ == '__main__':
