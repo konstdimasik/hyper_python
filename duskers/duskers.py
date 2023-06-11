@@ -1,4 +1,13 @@
 from ascii_art import welcome_screen, robot, hub_top, hub_bottom, pause_menu
+from typing import Dict
+
+
+def ask_for_user_command(command_options: Dict) -> None:
+    ready = input('Your command:\n').lower()
+    if ready in command_options:
+        command_options[ready]()
+    else:
+        print('Invalid input')
 
 
 class GameInterface():
@@ -12,7 +21,11 @@ class GameInterface():
             'high': self.high_scores,
             'help': self.help,
             'back': self.run_main_menu,
+        }
+        self._commands = {
+            'back': self.run_main_menu,
             'menu': self.run_main_menu,
+            'exit': self.exit_game,        
         }
         self._are_you_ready_menu_options = {
             'yes': self.start_the_game,
@@ -31,21 +44,19 @@ class GameInterface():
         print('Coming SOON! Thanks for playing!')
         self.finish_game()
 
+
+
     def ask_for_play(self) -> None:
         self._player_name = input('Enter your name:\n')
         print(f'Greetings, commander {self._player_name}!')
         while self.game_not_over:
             print('Are you ready to begin?')
             print('[Yes] [No] Return to Main[Menu]')
-            ready = input('Your command:\n').lower()
-            try:
-                self._are_you_ready_menu_options.get(ready)()
-            except TypeError:
-                print('Invalid input')
+            ask_for_user_command(self._are_you_ready_menu_options)
 
     def start_the_game(self) -> None:
         engine = GameEngine()
-        self._main_menu_options.get(engine.run_the_game())()
+        self._commands[engine.run_the_game()]()
 
     def dont_play(self) -> None:
         print('How about now.')
@@ -59,11 +70,7 @@ class GameInterface():
         print(welcome_screen)
         print('[Play]\n[High] scores\n[Help]\n[Exit]\n')
         while self.game_not_over:
-            entry = input('Your command:\n').lower()
-            try:
-                self._main_menu_options.get(entry)()
-            except TypeError:
-                print('Invalid input')
+            ask_for_user_command(self._main_menu_options)
 
 
 class GameEngine():
@@ -110,7 +117,7 @@ class GameEngine():
 
     def run_pause_menu(self) -> None:
         pause_menu = PauseMenu()
-        self._game_menu_options.get(pause_menu.run())()
+        self._game_menu_options[pause_menu.run()]()
 
     def explore(self) -> None:
         print('Coming SOON!')
