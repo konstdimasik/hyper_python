@@ -12,6 +12,7 @@ class GameInterface():
             'high': self.high_scores,
             'help': self.help,
             'back': self.run_main_menu,
+            'menu': self.run_main_menu,
         }
         self._are_you_ready_menu_options = {
             'yes': self.start_the_game,
@@ -43,8 +44,8 @@ class GameInterface():
                 print('Invalid input')
 
     def start_the_game(self) -> None:
-        engine = GameEngine(self)
-        engine.run_the_game()
+        engine = GameEngine()
+        self._main_menu_options.get(engine.run_the_game())()
 
     def dont_play(self) -> None:
         print('How about now.')
@@ -66,26 +67,35 @@ class GameInterface():
 
 
 class GameEngine():
-    def __init__(self, main_menu: GameInterface):
+    def __init__(self):
+        self._continue_the_game = True
+        self._engine_state = ''
         self._hub_top = hub_top
-        # self._hub_game = hub_game
         self._hub_bottom = hub_bottom
-        self._main_menu = main_menu
         self._game_menu_options = {
             'ex': self.explore,
             'up': self.upgrade,
             'save': self.save_game,
             'm': self.run_pause_menu,
+            'back': self.run_the_game,
+            'main': self.return_to_main,
+            'save_and_exit': self.save_game,
+            'exit': self.exit,
         }
 
-    def run_the_game(self) -> None:
+    def run_the_game(self) -> str:
         self.print_game_hub()
-        while self._main_menu.game_not_over:
+        while self._continue_the_game:
             entry = input('Your command:\n').lower()
             try:
                 self._game_menu_options.get(entry)()
             except TypeError:
                 print('Invalid input')
+        return self._engine_state
+
+    def return_to_main(self) -> None:
+        self._engine_state = 'menu'
+        self._continue_the_game = False
 
     def print_game_hub(self) -> None:
         print(self._hub_top)
@@ -99,45 +109,65 @@ class GameEngine():
         return '\n'.join(lines)
 
     def run_pause_menu(self) -> None:
-        pause_menu = PauseMenu(self, self._main_menu)
-        pause_menu.run()
+        pause_menu = PauseMenu()
+        self._game_menu_options.get(pause_menu.run())()
 
     def explore(self) -> None:
         print('Coming SOON!')
-        self._main_menu.finish_game()
+        self._engine_state = 'exit'
+        self._continue_the_game = False
 
     def upgrade(self) -> None:
         print('Coming SOON!')
-        self._main_menu.finish_game()
+        self._engine_state = 'exit'
+        self._continue_the_game = False
 
     def save_game(self) -> None:
         print('Coming SOON!')
-        self._main_menu.finish_game()
+        self._engine_state = 'exit'
+        self._continue_the_game = False
+
+    def exit(self) -> None:
+        self._engine_state = 'exit'
+        self._continue_the_game = False
 
 
 class PauseMenu():
-    def __init__(self, game_engine: GameEngine, main_menu: GameInterface):
-        self._main_menu = main_menu
-        self._engine = game_engine
+    def __init__(self):
+        self._pause_menu_works = True
+        self._pause_menu_state = ''
         self._pause_menu_options = {
-            'back': self._engine.run_the_game,
-            'main': self._main_menu.run_main_menu,
+            'back': self.back_to_game,
+            'main': self.return_to_main_menu,
             'save': self.save_and_exit,
-            'exit': self._main_menu.exit_game,
+            'exit': self.exit_game,
         }
 
     def save_and_exit(self) -> None:
-        self._engine.save_game()
-        self._main_menu.exit_game()
+        self._pause_menu_works = False
+        self._pause_menu_state = 'save_and_exit'
 
-    def run(self) -> None:
+    def back_to_game(self) -> None:
+        self._pause_menu_works = False
+        self._pause_menu_state = 'back'
+
+    def return_to_main_menu(self) -> None:
+        self._pause_menu_works = False
+        self._pause_menu_state = 'main'
+
+    def exit_game(self) -> None:
+        self._pause_menu_works = False
+        self._pause_menu_state = 'exit'
+
+    def run(self) -> str:
         print(pause_menu)
-        while self._main_menu.game_not_over:
+        while self._pause_menu_works:
             entry = input('Your command:\n').lower()
             try:
                 self._pause_menu_options.get(entry)()
             except TypeError:
                 print('Invalid input')
+        return self._pause_menu_state 
 
 
 def main():
