@@ -45,7 +45,6 @@ class GameInterface():
         self.finish_game()
 
 
-
     def ask_for_play(self) -> None:
         self._player_name = input('Enter your name:\n')
         print(f'Greetings, commander {self._player_name}!')
@@ -84,6 +83,8 @@ class GameEngine():
             'up': self.upgrade,
             'save': self.save_game,
             'm': self.run_pause_menu,
+        }
+        self._commands = {
             'back': self.run_the_game,
             'main': self.return_to_main,
             'save_and_exit': self.save_game,
@@ -93,11 +94,7 @@ class GameEngine():
     def run_the_game(self) -> str:
         self.print_game_hub()
         while self._continue_the_game:
-            entry = input('Your command:\n').lower()
-            try:
-                self._game_menu_options.get(entry)()
-            except TypeError:
-                print('Invalid input')
+            ask_for_user_command(self._game_menu_options)
         return self._engine_state
 
     def return_to_main(self) -> None:
@@ -117,7 +114,7 @@ class GameEngine():
 
     def run_pause_menu(self) -> None:
         pause_menu = PauseMenu()
-        self._game_menu_options[pause_menu.run()]()
+        self._commands[pause_menu.run()]()
 
     def explore(self) -> None:
         print('Coming SOON!')
@@ -169,11 +166,7 @@ class PauseMenu():
     def run(self) -> str:
         print(pause_menu)
         while self._pause_menu_works:
-            entry = input('Your command:\n').lower()
-            try:
-                self._pause_menu_options.get(entry)()
-            except TypeError:
-                print('Invalid input')
+            ask_for_user_command(self._pause_menu_options)
         return self._pause_menu_state 
 
 
