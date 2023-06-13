@@ -1,5 +1,7 @@
-from ascii_art import welcome_screen, robot, hub_top, hub_bottom, pause_menu
-from typing import Dict
+import argparse
+from typing import Dict, List
+
+from ascii_art import hub_bottom, hub_top, pause_menu, robot, welcome_screen
 
 
 def ask_for_user_command(command_options: Dict) -> None:
@@ -11,7 +13,7 @@ def ask_for_user_command(command_options: Dict) -> None:
 
 
 class GameInterface():
-    def __init__(self):
+    def __init__(self, seed: str, min_dutation: int, max_duration: int, locations: str):
         self._welcome_screen = welcome_screen
         self.game_not_over = True
         self._player_name = ''
@@ -25,13 +27,17 @@ class GameInterface():
         self._commands = {
             'back': self.run_main_menu,
             'menu': self.run_main_menu,
-            'exit': self.exit_game,        
+            'exit': self.exit_game,
         }
         self._are_you_ready_menu_options = {
             'yes': self.start_the_game,
             'no': self.dont_play,
             'menu': self.run_main_menu,
         }
+        self.seed = seed
+        self.min_dutation = min_dutation
+        self.max_duration = max_duration
+        self.locations = locations.split(',')
 
     def finish_game(self) -> None:
         self.game_not_over = False
@@ -54,7 +60,7 @@ class GameInterface():
             ask_for_user_command(self._are_you_ready_menu_options)
 
     def start_the_game(self) -> None:
-        engine = GameEngine()
+        engine = GameEngine(self.seed, self.min_dutation, self.max_duration, self.locations)
         self._commands[engine.run_the_game()]()
 
     def dont_play(self) -> None:
@@ -66,6 +72,10 @@ class GameInterface():
         self.run_main_menu()
 
     def run_main_menu(self) -> None:
+        # print(f'''\t{self.seed} = seed
+        # {self.min_dutation} = min_dutation
+        # {self.max_duration} = max_duration
+        # {self.locations} = locations''')
         print(welcome_screen)
         print('[Play]\n[High] scores\n[Help]\n[Exit]\n')
         while self.game_not_over:
@@ -73,11 +83,13 @@ class GameInterface():
 
 
 class GameEngine():
-    def __init__(self):
+    def __init__(self, seed: str, min_dutation: int, max_duration: int, locations: List[str], robots: int = 3, titanium: int = 0):
         self._continue_the_game = True
         self._engine_state = ''
         self._hub_top = hub_top
         self._hub_bottom = hub_bottom
+        self._number_of_robots = robots
+        self._titanium = titanium
         self._game_menu_options = {
             'ex': self.explore,
             'up': self.upgrade,
@@ -90,6 +102,10 @@ class GameEngine():
             'save_and_exit': self.save_game,
             'exit': self.exit,
         }
+        self.seed = seed
+        self.min_dutation = min_dutation
+        self.max_duration = max_duration
+        self.locations = locations
 
     def run_the_game(self) -> str:
         self.print_game_hub()
@@ -101,15 +117,20 @@ class GameEngine():
         self._engine_state = 'menu'
         self._continue_the_game = False
 
+    def show_titanium(self, titanium) -> str:
+        return f'| Titanium: {titanium}                                                                  |'
+
     def print_game_hub(self) -> None:
         print(self._hub_top)
-        print(self.make_robot_hub())
+        print(self.make_robot_hub(self._number_of_robots))
+        print(self._hub_top)
+        print(self.show_titanium(self._titanium))
         print(self._hub_bottom)
 
-    def make_robot_hub(self) -> str:
+    def make_robot_hub(self, robots) -> str:
         lines = robot.split('\n')
-        for i in range(len(lines)):
-            lines[i] = lines[i] + '  |  ' + lines[i] + '  |  ' + lines[i]
+        for _ in range(len(lines)):
+            lines[_] = '  |  '.join([lines[_]] * robots)
         return '\n'.join(lines)
 
     def run_pause_menu(self) -> None:
@@ -117,6 +138,7 @@ class GameEngine():
         self._commands[pause_menu.run()]()
 
     def explore(self) -> None:
+
         print('Coming SOON!')
         self._engine_state = 'exit'
         self._continue_the_game = False
@@ -167,11 +189,42 @@ class PauseMenu():
         print(pause_menu)
         while self._pause_menu_works:
             ask_for_user_command(self._pause_menu_options)
-        return self._pause_menu_state 
+        return self._pause_menu_state
 
 
 def main():
-    game = GameInterface()
+    parser = argparse.ArgumentParser(description="Survival Game options")
+    parser.add_argument(
+        'seed',
+        nargs='?',
+        default='',
+        type=str,
+        help='the seed for random',
+    )
+    parser.add_argument(
+        'min_duration',
+        nargs='?',
+        default=1,
+        type=int,
+        help='the minimum duration of animations',
+    )
+    parser.add_argument(
+        'max_duration',
+        nargs='?',
+        default=5,
+        type=int,
+        help='the maximum duration of animations',
+    )
+    parser.add_argument(
+        'locations',
+        nargs='?',
+        default=[],
+        type=str,
+        help='the names of possible locations',
+    )
+    args = parser.parse_args()
+
+    game = GameInterface(args.seed, args.min_duration, args.max_duration, args.locations)
     game.run_main_menu()
 
 
