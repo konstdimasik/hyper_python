@@ -1,9 +1,10 @@
 import argparse
+import datetime
 import random
 import time
 from typing import Dict, List
 
-from ascii_art import hub_bottom, hub_top, pause_menu, robot, welcome_screen
+from ascii_art import game_saved, hub_bottom, hub_top, pause_menu, robot, welcome_screen
 
 
 def ask_for_user_command(command_options: Dict) -> None:
@@ -21,11 +22,12 @@ class GameInterface():
         self.game_not_over = True
         self._player_name = ''
         self._main_menu_options = {
-            'play': self.ask_for_play,
+            'new': self.ask_for_play,
             'exit': self.exit_game,
             'high': self.high_scores,
             'help': self.help,
             'back': self.run_main_menu,
+            # 'load': self.load_the_game,
         }
         self._commands = {
             'back': self.run_main_menu,
@@ -61,7 +63,7 @@ class GameInterface():
             ask_for_user_command(self._are_you_ready_menu_options)
 
     def start_the_game(self) -> None:
-        engine = GameEngine(self.min_duration, self.max_duration, self.locations)
+        engine = GameEngine(self.min_duration, self.max_duration, self.locations, self._player_name)
         self._commands[engine.run_the_game()]()
 
     def dont_play(self) -> None:
@@ -74,13 +76,13 @@ class GameInterface():
 
     def run_main_menu(self) -> None:
         print(welcome_screen)
-        print('[Play]\n[High] scores\n[Help]\n[Exit]\n')
+        print('[New]  Game\n[Load] Game\n[High] scores\n[Help]\n[Exit]\n')
         while self.game_not_over:
             ask_for_user_command(self._main_menu_options)
 
 
 class GameEngine():
-    def __init__(self, min_duration: int, max_duration: int, locations: List[str], robots: int = 3, titanium: int = 0):
+    def __init__(self, min_duration: int, max_duration: int, locations: List[str], name: str, robots: int = 3, titanium: int = 0):
         self._continue_the_game = True
         self._engine_state = ''
         self._hub_top = hub_top
@@ -102,6 +104,7 @@ class GameEngine():
         self.min_duration = min_duration
         self.max_duration = max_duration
         self.locations = locations
+        self._player_name = name
 
     def run_the_game(self) -> str:
         self.print_game_hub()
@@ -145,9 +148,9 @@ class GameEngine():
         self._continue_the_game = False
 
     def save_game(self) -> None:
-        print('Coming SOON!')
-        self._engine_state = 'exit'
-        self._continue_the_game = False
+        slot_menu = SlotsMenu()
+        slot_menu.run_save_menu(self._player_name, self._titanium, self._number_of_robots)
+        self.run_the_game()
 
     def exit(self) -> None:
         self._engine_state = 'exit'
@@ -254,17 +257,60 @@ class Explore():
     def run_exploration(self) -> str:
         self.continue_searching() 
         while self._exploring:
-            ready = input('Your command:\n').lower()
-            if ready in self._exploration_options:
-                self._exploration_options[ready]()
-            elif ready in self.locations_in_order:
-                location = self.locations_in_order[ready][0]
-                self.acquired_amount = self.locations_in_order[ready][1]
+            entry = input('Your command:\n').lower()
+            if entry in self._exploration_options:
+                self._exploration_options[entry]()
+            elif entry in self.locations_in_order:
+                location = self.locations_in_order[entry][0]
+                self.acquired_amount = self.locations_in_order[entry][1]
                 self.deploying_robots(location, self.acquired_amount)
                 self._exploring = False
             else:
                 print('Invalid input')
         return self.acquired_amount
+
+
+class SlotsMenu():
+    def __init__(self):
+        self._save_menu_works = True
+        self.slots = {
+            '1': 'empty',
+            '2': 'empty',
+            '3': 'empty',
+        }
+        self._slots_options = {
+            'back': self.back,
+        }
+
+    def show_slots_to_select(self) -> None:
+        print('\tSelect save slot:')
+        for key, value in self.slots.items():
+            print(f'\t[{key}] {value}')
+
+    def back(self) -> None:
+        self._save_menu_works = False
+
+    def save_game_session_to_file(self, slot: str, name: str, amount: int, robots: int) -> None:
+        filename = 'save_file_' + slot + '.txt'  
+        with open(filename, 'w', encoding='utf-8') as file_for_export:
+            time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
+            line = f'{name} Titanium: {amount} Robots: {robots} Last save: {time}'
+            file_for_export.write(line)
+            print(game_saved)
+
+    def run_save_menu(self, name: str, amount: int, robots: int) -> None:
+        while self._save_menu_works:
+            self.show_slots_to_select()
+            entry = input('Your command:\n').lower()
+            if entry in self._slots_options:
+                self._slots_options[entry]()
+            if entry in self.slots:
+                self.save_game_session_to_file(entry, name, amount, robots)
+                self._save_menu_works = False
+            else:
+                print('Invalid input')
+
+    # def load_game_session_from_file(self, slot: str) -> List[str]:
 
 
 def main():
