@@ -1,4 +1,5 @@
 import argparse
+import random
 from typing import Dict, List
 
 from ascii_art import hub_bottom, hub_top, pause_menu, robot, welcome_screen
@@ -15,6 +16,7 @@ def ask_for_user_command(command_options: Dict) -> None:
 class GameInterface():
     def __init__(self, seed: str, min_dutation: int, max_duration: int, locations: str):
         self._welcome_screen = welcome_screen
+        random.seed(seed)
         self.game_not_over = True
         self._player_name = ''
         self._main_menu_options = {
@@ -34,7 +36,6 @@ class GameInterface():
             'no': self.dont_play,
             'menu': self.run_main_menu,
         }
-        self.seed = seed
         self.min_dutation = min_dutation
         self.max_duration = max_duration
         self.locations = locations.split(',')
@@ -60,7 +61,7 @@ class GameInterface():
             ask_for_user_command(self._are_you_ready_menu_options)
 
     def start_the_game(self) -> None:
-        engine = GameEngine(self.seed, self.min_dutation, self.max_duration, self.locations)
+        engine = GameEngine(self.min_dutation, self.max_duration, self.locations)
         self._commands[engine.run_the_game()]()
 
     def dont_play(self) -> None:
@@ -72,10 +73,6 @@ class GameInterface():
         self.run_main_menu()
 
     def run_main_menu(self) -> None:
-        # print(f'''\t{self.seed} = seed
-        # {self.min_dutation} = min_dutation
-        # {self.max_duration} = max_duration
-        # {self.locations} = locations''')
         print(welcome_screen)
         print('[Play]\n[High] scores\n[Help]\n[Exit]\n')
         while self.game_not_over:
@@ -83,7 +80,7 @@ class GameInterface():
 
 
 class GameEngine():
-    def __init__(self, seed: str, min_dutation: int, max_duration: int, locations: List[str], robots: int = 3, titanium: int = 0):
+    def __init__(self, min_dutation: int, max_duration: int, locations: List[str], robots: int = 3, titanium: int = 0):
         self._continue_the_game = True
         self._engine_state = ''
         self._hub_top = hub_top
@@ -102,7 +99,6 @@ class GameEngine():
             'save_and_exit': self.save_game,
             'exit': self.exit,
         }
-        self.seed = seed
         self.min_dutation = min_dutation
         self.max_duration = max_duration
         self.locations = locations
@@ -138,10 +134,10 @@ class GameEngine():
         self._commands[pause_menu.run()]()
 
     def explore(self) -> None:
-
-        print('Coming SOON!')
-        self._engine_state = 'exit'
-        self._continue_the_game = False
+        exploration = Explore(self.min_dutation, self.max_duration, self.locations)
+        result = exploration.run_exploration()
+        self._titanium += result
+        self.run_the_game()
 
     def upgrade(self) -> None:
         print('Coming SOON!')
@@ -191,6 +187,76 @@ class PauseMenu():
             ask_for_user_command(self._pause_menu_options)
         return self._pause_menu_state
 
+class Explore():
+    def __init__(self, min_dutation: int, max_duration: int, locations: List[str]):
+        self._exploring = True
+        self.min_dutation = min_dutation
+        self.max_duration = max_duration
+        self.locations = locations
+        self.locations_in_order = {}
+        self.max_locations = random.randint(1, 9)
+        self.acquired_amount = 0
+        self.location_counter = 1
+        self._exploration_options = {
+            's': self.continue_searching,
+            'back': self.back_to_hub,
+        }
+
+    def back_to_hub(self) -> None:
+        self._exploring = False
+
+    def generate_location(self, locations, max_locations) -> str:
+        i = 1
+        while i <= max_locations:
+            yield random.choice(locations)
+            i += 1
+
+    def show_next_location(self) -> str:
+        generator = self.generate_location(self.locations, self.max_locations)
+        try:
+            location = next(generator)
+        except StopIteration:
+            return ''
+        return location
+
+    def print_searching_options(self) -> None:
+        for key, value in self.locations_in_order.items():
+            print(f'[{key}] {value[0]}')
+        print()
+        print('[S] to continue searching')
+
+    def continue_searching(self) -> None:
+        if self.location_counter <= self.max_locations:
+            print('Searching')
+            location = self.show_next_location()
+            amount_titanium = random.randint(10, 100)
+            self.locations_in_order[str(self.location_counter)] = (location, amount_titanium)
+            self.print_searching_options()
+            self.location_counter += 1
+        else:
+            print('Nothing more in sight.')
+            print('       [Back]')
+
+    def deploying_robots(self, location: str, amount: int) -> None:
+        print('Deploying robots')
+        print(f'{location} explored successfully, with no damage taken.')
+        print(f'Acquired {amount} lumps of titanium')
+
+
+    def run_exploration(self) -> str:
+        self.continue_searching() 
+        while self._exploring:
+            ready = input('Your command:\n').lower()
+            if ready in self._exploration_options:
+                self._exploration_options[ready]()
+            elif ready in self.locations_in_order:
+                location = self.locations_in_order[ready][0]
+                self.acquired_amount = self.locations_in_order[ready][1]
+                self.deploying_robots(location, self.acquired_amount)
+                self._exploring = False
+            else:
+               print('Invalid input')
+        return self.acquired_amount
 
 def main():
     parser = argparse.ArgumentParser(description="Survival Game options")
@@ -218,7 +284,7 @@ def main():
     parser.add_argument(
         'locations',
         nargs='?',
-        default=[],
+        default=['Nuclear power plant', 'Old beach bar'],
         type=str,
         help='the names of possible locations',
     )
