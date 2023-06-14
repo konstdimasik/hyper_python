@@ -84,7 +84,8 @@ class GameInterface:
         )
         self._commands[engine.run_the_game()]()
 
-    def dont_play(self) -> None:
+    @staticmethod
+    def dont_play() -> None:
         print('How about now.')
 
     def high_scores(self) -> None:
@@ -155,7 +156,8 @@ class GameEngine:
         self._engine_state = 'menu'
         self._continue_the_game = False
 
-    def show_titanium(self, titanium) -> str:
+    @staticmethod
+    def show_titanium(titanium) -> str:
         return f'| Titanium: {titanium}                                                                  |'
 
     def print_game_hub(self) -> None:
@@ -165,7 +167,8 @@ class GameEngine:
         print(self.show_titanium(self._titanium))
         print(self._hub_bottom)
 
-    def make_robot_hub(self, robots) -> str:
+    @staticmethod
+    def make_robot_hub(robots) -> str:
         lines = robot.split('\n')
         for _ in range(len(lines)):
             lines[_] = '  |  '.join([lines[_]] * robots)
@@ -248,7 +251,8 @@ class Explore:
     def back_to_hub(self) -> None:
         self._exploring = False
 
-    def generate_location(self, locations, max_locations):
+    @staticmethod
+    def generate_location(locations, max_locations):
         i = 1
         while i <= max_locations:
             yield random.choice(locations)
@@ -318,20 +322,25 @@ class SlotsMenu:
             '3': 'empty',
         }
 
+    @staticmethod
+    def make_filename(slot: str) -> str:
+        return f'save_file_{slot}.txt'
+
+
     def show_slots_to_select(self) -> None:
         print('\tSelect save slot:')
         for key, session in self.slots.items():
             print(f'\t[{key}] {session}')
 
     def check_slots_in_backup(self) -> None:
-        for slot in range(1, 4):
-            filename = 'save_file_' + str(slot) + '.txt'
-            if path.isfile(filename):
-                session = self.load_game_session_from_file(str(slot))
-                self.slots[str(slot)] = session
+        for slot in self.slots:
+            if path.isfile(self.make_filename(slot)):
+                session = self.load_game_session_from_file(slot)
+                self.slots[slot] = session
 
-    def save_game_session_to_file(self, slot: str, name: str, amount: int, robots: int) -> None:
-        filename = 'save_file_' + slot + '.txt'  
+    @staticmethod
+    def save_game_session_to_file(slot: str, name: str, amount: int, robots: int) -> None:
+        filename = self.make_filename(slot) 
         with open(filename, 'w', encoding='utf-8') as file_for_export:
             save_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
             line = f'{name} Titanium: {amount} Robots: {robots} Last save: {save_time}'
@@ -351,12 +360,12 @@ class SlotsMenu:
             else:
                 print('Invalid input')
 
-    def load_game_session_from_file(self, slot: str) -> str:
-        filename = 'save_file_' + slot + '.txt'
+    @staticmethod
+    def load_game_session_from_file(slot: str) -> str:
+        filename = self.make_filename(slot)
         try:
             with open(filename, 'r', encoding='utf-8') as file_for_import:
                 return file_for_import.read()
-
         except FileNotFoundError:
             print('File not found.')
 
