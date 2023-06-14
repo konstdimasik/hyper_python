@@ -2,6 +2,7 @@ import argparse
 import datetime
 import random
 import time
+from dataclasses import dataclass
 from os import path
 from typing import Dict, List
 
@@ -268,7 +269,7 @@ class Explore:
 
     def print_searching_options(self) -> None:
         for key, location in self.locations_in_order.items():
-            print(f'[{key}] {location[0]}')
+            print(f'[{key}] {location.name}')
         print()
         print('[S] to continue searching')
 
@@ -283,9 +284,12 @@ class Explore:
     def continue_searching(self) -> None:
         if self.location_counter <= self.max_locations:
             self.animate_printing('Searching')
-            location = self.show_next_location()
-            amount_titanium = random.randint(10, 100)
-            self.locations_in_order[str(self.location_counter)] = (location, amount_titanium)
+            location = Location(
+                name=self.show_next_location(),
+                amount_titanium=random.randint(10, 100),
+                # encounter_rate=random.random(),
+            )
+            self.locations_in_order[str(self.location_counter)] = location
             self.print_searching_options()
             self.location_counter += 1
         else:
@@ -304,13 +308,20 @@ class Explore:
             if entry in self._exploration_options:
                 self._exploration_options[entry]()
             elif entry in self.locations_in_order:
-                location = self.locations_in_order[entry][0]
-                self.acquired_amount = self.locations_in_order[entry][1]
+                location = self.locations_in_order[entry].name
+                self.acquired_amount = self.locations_in_order[entry].amount_titanium
                 self.deploying_robots(location, self.acquired_amount)
                 self._exploring = False
             else:
                 print('Invalid input')
         return self.acquired_amount
+
+
+@dataclass
+class Location:
+    name: str
+    amount_titanium: int
+    # encounter_rate: float
 
 
 class SlotsMenu:
@@ -326,7 +337,6 @@ class SlotsMenu:
     def make_filename(slot: str) -> str:
         return f'save_file_{slot}.txt'
 
-
     def show_slots_to_select(self) -> None:
         print('\tSelect save slot:')
         for key, session in self.slots.items():
@@ -340,7 +350,7 @@ class SlotsMenu:
 
     @staticmethod
     def save_game_session_to_file(slot: str, name: str, amount: int, robots: int) -> None:
-        filename = self.make_filename(slot) 
+        filename = SlotsMenu.make_filename(slot)
         with open(filename, 'w', encoding='utf-8') as file_for_export:
             save_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
             line = f'{name} Titanium: {amount} Robots: {robots} Last save: {save_time}'
@@ -362,7 +372,7 @@ class SlotsMenu:
 
     @staticmethod
     def load_game_session_from_file(slot: str) -> str:
-        filename = self.make_filename(slot)
+        filename = SlotsMenu.make_filename(slot)
         try:
             with open(filename, 'r', encoding='utf-8') as file_for_import:
                 return file_for_import.read()
