@@ -2,12 +2,21 @@ import argparse
 import datetime
 import random
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from os import path
 from typing import Dict, List
 
-from ascii_art import (game_loaded, game_saved, hub_bottom, hub_top,
-                       paused_menu, robot, welcome_screen)
+from ascii_art import (
+    game_loaded_msg,
+    game_over_msg,
+    game_saved_msg,
+    hub_bottom,
+    hub_top,
+    paused_menu,
+    robot,
+    shop_menu,
+    welcome_screen,
+)
 
 
 def ask_for_user_command(command_options: Dict) -> None:
@@ -20,15 +29,11 @@ def ask_for_user_command(command_options: Dict) -> None:
 
 @dataclass(order=True)
 class User:
-    sort_index: int = field(init=False)
     name: str
     amount_titanium: int = 0
     amount_robots: int = 3
     titanium_scan: bool = False
-    enemy_scan: bool = False 
-
-    def __post_init__(self) -> None:
-        self.sort_index = self.amount_titanium
+    enemy_scan: bool = False
 
     def get_upgrades(self) -> str:
         upgrades = ['']
@@ -56,6 +61,7 @@ class GameInterface:
             'back': self.run_main_menu,
             'menu': self.run_main_menu,
             'exit': self.exit_game,
+            'game_over': self.game_over,
         }
         self._are_you_ready_menu_options = {
             'yes': self.start_the_game,
@@ -73,6 +79,12 @@ class GameInterface:
     def exit_game(self) -> None:
         print('Thanks for playing, bye!')
         self.finish_game()
+
+    def game_over(self) -> None:
+        print(game_over_msg)
+        scores = ScoresTable(self.gamer)
+        scores.save_scores()
+        self.run_main_menu()
 
     def help(self) -> None:
         print('Coming SOON! Thanks for playing!')
@@ -100,15 +112,15 @@ class GameInterface:
         print('How about now.')
 
     def high_scores(self) -> None:
-        print('No scores to display.')
-        print('[Back]')
+        scores = ScoresTable(self.gamer)
+        scores.run_scores_table()
         self.run_main_menu()
 
     def load_the_game(self) -> None:
         slot_menu = SlotsMenu()
         self.gamer = slot_menu.run_load_menu()
-        if self.gamer:
-            print(game_loaded)
+        if self.gamer != User(''):
+            print(game_loaded_msg)
             print(f'Welcome back, commander {self.gamer.name}!')
             self.start_the_game()
         self.run_main_menu()
@@ -150,8 +162,8 @@ class GameEngine:
         self.locations = locations
 
     def run_the_game(self) -> str:
-        self.print_game_hub()
         while self._continue_the_game:
+            self.print_game_hub()
             ask_for_user_command(self._game_menu_options)
         return self._engine_state
 
@@ -184,13 +196,15 @@ class GameEngine:
     def explore(self) -> None:
         exploration = Explore(self.min_duration, self.max_duration, self.locations, self.gamer)
         self.gamer = exploration.run_exploration()
-        
+        if self.gamer.amount_robots == 0:
+            self._continue_the_game = False
+            self._engine_state = 'game_over'
         self.run_the_game()
 
     def upgrade(self) -> None:
-        print('Coming SOON!')
-        self._engine_state = 'exit'
-        self._continue_the_game = False
+        shop = Shop(self.gamer)
+        self.gamer = shop.run_the_shop()
+        self._engine_state = 'back'
 
     def save_game(self) -> None:
         slot_menu = SlotsMenu()
@@ -317,10 +331,19 @@ class Explore:
             print('Nothing more in sight.')
             print('       [Back]')
 
-    def deploying_robots(self, location: str, amount: int) -> None:
+    def deploying_robots(self, location: str, amount: int, fight_result: bool) -> None:
         self.animate_printing('Deploying robots')
-        print(f'{location} explored successfully, with no damage taken.')
+        if not fight_result:
+            print('Enemy encounter')
+            print(f'{location} explored successfully, 1 robot lost..')
+        else:
+            print(f'{location} explored successfully, with no damage taken.')
         print(f'Acquired {amount} lumps of titanium')
+
+    @staticmethod
+    def battle(location: Location) -> bool:
+        fight_power = random.random()
+        return fight_power < location.encounter_rate
 
     def run_exploration(self) -> User:
         self.continue_searching()
@@ -329,10 +352,19 @@ class Explore:
             if entry in self._exploration_options:
                 self._exploration_options[entry]()
             elif entry in self.locations_in_order:
-                location = self.locations_in_order[entry].name
-                self.acquired_amount = self.locations_in_order[entry].amount_titanium
-                self.gamer.amount_titanium += self.acquired_amount
-                self.deploying_robots(location, self.acquired_amount)
+                location = self.locations_in_order[entry]
+                fight_result = self.battle(location)
+                if not fight_result:
+                    self.gamer.amount_robots -= 1
+                if self.gamer.amount_robots == 0:
+                    self.animate_printing('Deploying robots')
+                    print('Enemy encounter!!!')
+                    print('Mission aborted, the last robot lost...')
+                    return self.gamer
+                else:
+                    self.acquired_amount = self.locations_in_order[entry].amount_titanium
+                    self.gamer.amount_titanium += self.acquired_amount
+                    self.deploying_robots(location.name, self.acquired_amount, fight_result)
                 self._exploring = False
             else:
                 print('Invalid input')
@@ -355,7 +387,7 @@ class SlotsMenu:
     def show_slots_to_select(self) -> None:
         print('\tSelect slot:')
         for key, session in self.slots.items():
-            print(f'\t[{key}] {session}')
+            print(f'[{key}] {session}')
 
     def check_slots_in_backup(self) -> None:
         for slot in self.slots:
@@ -370,7 +402,7 @@ class SlotsMenu:
             save_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
             line = f'{gamer.name} Titanium: {gamer.amount_titanium} Robots: {gamer.amount_robots} Last save: {save_time} Upgrades: {gamer.get_upgrades()}'
             file_for_export.write(line)
-            print(game_saved)
+            print(game_saved_msg)
 
     def run_save_menu(self, gamer: User) -> None:
         self.check_slots_in_backup()
@@ -416,7 +448,103 @@ class SlotsMenu:
                 session = self.load_game_session_from_file(entry)
                 return self.parse_user_from_session(session)
             else:
-                print('Invalid input', entry)
+                print('Invalid input')
+
+
+class Shop:
+    titanium_scan: int = 250
+    enemy_scan: int = 500
+    new_robot: int = 1000
+
+    def __init__(self, gamer: User):
+        self.gamer = gamer
+        self._slots = {
+            '1': Shop.titanium_scan,
+            '2': Shop.enemy_scan,
+            '3': Shop.new_robot,
+        }
+
+    @staticmethod
+    def try_to_buy(product: int, amount_titanium: int) -> bool:
+        return product <= amount_titanium
+
+    def add_purchases(self, product: str):
+        if product == '1':
+            self.gamer.titanium_scan = True
+            print('Purchase successful. You can now see how much titanium you can get from each found location.')
+        elif product == '2':
+            self.gamer.enemy_scan = True
+            print('Purchase successful. You will now see how likely you will encounter an enemy at each found location.')
+        elif product == '3':
+            self.gamer.amount_robots += 1
+            print('Purchase successful. You now have an additional robot')
+
+    def run_the_shop(self) -> User:
+        while True:
+            print(shop_menu)
+            entry = input('Your command:\n').lower()
+            if entry == 'back':
+                return self.gamer
+            if entry in self._slots:
+                enough_titanium = self.try_to_buy(self._slots[entry], self.gamer.amount_titanium)
+                if enough_titanium:
+                    self. add_purchases(entry)
+                    return self.gamer
+                else:
+                    print('Not enough titanium!')
+            else:
+                print('Invalid input')
+
+
+class ScoresTable:
+    def __init__(self, gamer: User):
+        self._scores_table_works = True
+        self.gamer = gamer
+        self._scores = []
+        self._counter = 1
+        self._command_options = {
+            'back': self.go_back,
+        }
+
+    def go_back(self) -> None:
+        self._scores_table_works = False
+
+    def load_high_scores(self) -> None:
+        try:
+            with open('high_scores.txt', 'r', encoding='utf-8') as file_for_import:
+                for line in file_for_import:
+                    name_and_scores = line.strip().split(':')
+                    self._scores.append(User(name_and_scores[0], int(name_and_scores[1])))
+        except FileNotFoundError:
+            print('No scores to display.')
+
+    def show_scores_table(self) -> None:
+        self.sort_scores()
+        for ind, gamer in enumerate(self._scores):
+            print(f'({ind + 1}) {gamer.name} {gamer.amount_titanium}')
+            if ind == 9:
+                break
+
+    def run_scores_table(self) -> None:
+        while self._scores_table_works:
+            print('\n\tHIGH SCORES\n')
+            self.show_scores_table()
+            print('\n\t[Back]\n')
+            ask_for_user_command(self._command_options)
+
+    def sort_scores(self) -> None:
+        self.load_high_scores()
+        self._scores.append(User(self.gamer.name, self.gamer.amount_titanium))
+        self._scores.sort(key=lambda g: g.amount_titanium, reverse=True)
+
+    def save_scores(self) -> None:
+        self.sort_scores()
+        with open('high_scores.txt', 'w', encoding='utf-8') as file_for_export:
+            i = 0
+            while i < 10 and i < len(self._scores):
+                line = f'{self._scores[i].name}:{self._scores[i].amount_titanium}\n'
+                file_for_export.write(line)
+                i += 1
 
 
 def main():
@@ -431,14 +559,14 @@ def main():
     parser.add_argument(
         'min_duration',
         nargs='?',
-        default=1,
+        default=0,
         type=int,
         help='the minimum duration of animations',
     )
     parser.add_argument(
         'max_duration',
         nargs='?',
-        default=5,
+        default=0,
         type=int,
         help='the maximum duration of animations',
     )
