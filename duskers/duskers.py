@@ -6,15 +6,8 @@ from dataclasses import dataclass, field
 from os import path
 from typing import Dict, List
 
-from ascii_art import (
-    game_loaded,
-    game_saved,
-    hub_bottom,
-    hub_top,
-    paused_menu,
-    robot,
-    welcome_screen,
-)
+from ascii_art import (game_loaded, game_saved, hub_bottom, hub_top,
+                       paused_menu, robot, welcome_screen)
 
 
 def ask_for_user_command(command_options: Dict) -> None:
@@ -23,6 +16,27 @@ def ask_for_user_command(command_options: Dict) -> None:
         command_options[ready]()
     else:
         print('Invalid input')
+
+
+@dataclass(order=True)
+class User:
+    sort_index: int = field(init=False)
+    name: str
+    amount_titanium: int = 0
+    amount_robots: int = 3
+    titanium_scan: bool = False
+    enemy_scan: bool = False 
+
+    def __post_init__(self) -> None:
+        self.sort_index = self.amount_titanium
+
+    def get_upgrades(self) -> str:
+        upgrades = ['']
+        if self.titanium_scan:
+            upgrades.append('titanium_scan')
+        if self.enemy_scan:
+            upgrades.append('enemy_scan')
+        return ' '.join(upgrades)
 
 
 class GameInterface:
@@ -100,23 +114,10 @@ class GameInterface:
         self.run_main_menu()
 
     def run_main_menu(self) -> None:
-        print(welcome_screen)
-        print('[New]  Game\n[Load] Game\n[High] scores\n[Help]\n[Exit]\n')
         while self.game_not_over:
+            print(welcome_screen)
+            print('[New]  Game\n[Load] Game\n[High] scores\n[Help]\n[Exit]\n')
             ask_for_user_command(self._main_menu_options)
-
-
-@dataclass(order=True)
-class User:
-    sort_index: int = field(init=False)
-    name: str
-    amount_titanium: int = 0
-    amount_robots: int = 3
-    can_see_titanium: bool = False
-    can_see_enemy: bool = False 
-
-    def __post_init__(self):
-        self.sort_index = self.amount_titanium
 
 
 class GameEngine:
@@ -181,9 +182,9 @@ class GameEngine:
         self._commands[pause_menu.run()]()
 
     def explore(self) -> None:
-        exploration = Explore(self.min_duration, self.max_duration, self.locations)
-        explored_titanium = exploration.run_exploration()
-        self.gamer.amount_titanium += explored_titanium
+        exploration = Explore(self.min_duration, self.max_duration, self.locations, self.gamer)
+        self.gamer = exploration.run_exploration()
+        
         self.run_the_game()
 
     def upgrade(self) -> None:
@@ -235,12 +236,20 @@ class PauseMenu:
         return self._pause_menu_state
 
 
+@dataclass
+class Location:
+    name: str
+    amount_titanium: int
+    encounter_rate: float
+
+
 class Explore:
-    def __init__(self, min_duration: int, max_duration: int, locations: List[str]):
+    def __init__(self, min_duration: int, max_duration: int, locations: List[str], gamer: User):
         self._exploring = True
         self.min_duration = min_duration
         self.max_duration = max_duration
         self.locations = locations
+        self.gamer = gamer
         self.locations_in_order = {}
         self.max_locations = random.randint(1, 9)
         self.acquired_amount = 0
@@ -268,9 +277,20 @@ class Explore:
             return ''
         return location
 
+    def make_searching_line(self, key: str, location: Location) -> str:
+        if self.gamer.titanium_scan and self.gamer.enemy_scan:
+            encounter_rate = round(location.encounter_rate * 100)
+            return f'[{key}] {location.name} Titanium: {location.amount_titanium} Encounter rate: {encounter_rate}%'
+        if self.gamer.titanium_scan and not self.gamer.enemy_scan:
+            return f'[{key}] {location.name} Titanium: {location.amount_titanium}'
+        if not self.gamer.titanium_scan and self.gamer.enemy_scan:
+            encounter_rate = round(location.encounter_rate * 100)
+            return f'[{key}] {location.name} Encounter rate: {encounter_rate}%'
+        return f'[{key}] {location.name}'
+
     def print_searching_options(self) -> None:
         for key, location in self.locations_in_order.items():
-            print(f'[{key}] {location.name}')
+            print(self.make_searching_line(key, location))
         print()
         print('[S] to continue searching')
 
@@ -288,7 +308,7 @@ class Explore:
             location = Location(
                 name=self.show_next_location(),
                 amount_titanium=random.randint(10, 100),
-                # encounter_rate=random.random(),
+                encounter_rate=random.random(),
             )
             self.locations_in_order[str(self.location_counter)] = location
             self.print_searching_options()
@@ -302,7 +322,7 @@ class Explore:
         print(f'{location} explored successfully, with no damage taken.')
         print(f'Acquired {amount} lumps of titanium')
 
-    def run_exploration(self) -> str:
+    def run_exploration(self) -> User:
         self.continue_searching()
         while self._exploring:
             entry = input('Your command:\n').lower()
@@ -311,18 +331,12 @@ class Explore:
             elif entry in self.locations_in_order:
                 location = self.locations_in_order[entry].name
                 self.acquired_amount = self.locations_in_order[entry].amount_titanium
+                self.gamer.amount_titanium += self.acquired_amount
                 self.deploying_robots(location, self.acquired_amount)
                 self._exploring = False
             else:
                 print('Invalid input')
-        return self.acquired_amount
-
-
-@dataclass
-class Location:
-    name: str
-    amount_titanium: int
-    # encounter_rate: float
+        return self.gamer
 
 
 class SlotsMenu:
@@ -354,7 +368,7 @@ class SlotsMenu:
         filename = SlotsMenu.make_filename(slot)
         with open(filename, 'w', encoding='utf-8') as file_for_export:
             save_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
-            line = f'{gamer.name} Titanium: {gamer.amount_titanium} Robots: {gamer.amount_robots} Last save: {save_time}'
+            line = f'{gamer.name} Titanium: {gamer.amount_titanium} Robots: {gamer.amount_robots} Last save: {save_time} Upgrades: {gamer.get_upgrades()}'
             file_for_export.write(line)
             print(game_saved)
 
@@ -375,10 +389,15 @@ class SlotsMenu:
     def parse_user_from_session(session: str) -> User:
         session = session.split()
         gamer = User(session[0], int(session[2]), int(session[4]))
+        for word in session:
+            if word == 'titanium_scan':
+                gamer.titanium_scan = True
+            if word == 'enemy_scan':
+                gamer.enemy_scan = True
         return gamer
 
     @staticmethod
-    def load_game_session_from_file(slot: str) -> User:
+    def load_game_session_from_file(slot: str) -> str:
         filename = SlotsMenu.make_filename(slot)
         try:
             with open(filename, 'r', encoding='utf-8') as file_for_import:
@@ -426,7 +445,7 @@ def main():
     parser.add_argument(
         'locations',
         nargs='?',
-        default=['Nuclear power plant', 'Old beach bar'],
+        default='Nuclear power plant, Old beach bar',
         type=str,
         help='the names of possible locations',
     )
