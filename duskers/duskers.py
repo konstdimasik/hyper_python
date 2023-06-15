@@ -2,7 +2,7 @@ import argparse
 import datetime
 import random
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from os import path
 from typing import Dict, List
 
@@ -30,7 +30,6 @@ class GameInterface:
         self._welcome_screen = welcome_screen
         random.seed(seed)
         self.game_not_over = True
-        self._player_name = ''
         self._main_menu_options = {
             'new': self.ask_for_play,
             'exit': self.exit_game,
@@ -52,8 +51,7 @@ class GameInterface:
         self.min_duration = min_duration
         self.max_duration = max_duration
         self.locations = locations.split(',')
-        self._robots = 3
-        self._titanium = 0
+        self.gamer = User('')
 
     def finish_game(self) -> None:
         self.game_not_over = False
@@ -67,8 +65,8 @@ class GameInterface:
         self.finish_game()
 
     def ask_for_play(self) -> None:
-        self._player_name = input('Enter your name:\n')
-        print(f'Greetings, commander {self._player_name}!')
+        self.gamer.name = input('Enter your name:\n')
+        print(f'Greetings, commander {self.gamer.name}!')
         while self.game_not_over:
             print('Are you ready to begin?')
             print('[Yes] [No] Return to Main[Menu]')
@@ -79,9 +77,7 @@ class GameInterface:
             self.min_duration,
             self.max_duration,
             self.locations,
-            self._player_name,
-            self._titanium,
-            self._robots,
+            self.gamer,
         )
         self._commands[engine.run_the_game()]()
 
@@ -96,14 +92,10 @@ class GameInterface:
 
     def load_the_game(self) -> None:
         slot_menu = SlotsMenu()
-        session = slot_menu.run_load_menu()
-        if session:
-            session = session.split()
-            self._player_name = session[0]
-            self._titanium = int(session[2])
-            self._robots = int(session[4])
+        self.gamer = slot_menu.run_load_menu()
+        if self.gamer:
             print(game_loaded)
-            print(f'Welcome back, commander {self._player_name}!')
+            print(f'Welcome back, commander {self.gamer.name}!')
             self.start_the_game()
         self.run_main_menu()
 
@@ -114,22 +106,32 @@ class GameInterface:
             ask_for_user_command(self._main_menu_options)
 
 
+@dataclass(order=True)
+class User:
+    sort_index: int = field(init=False)
+    name: str
+    amount_titanium: int = 0
+    amount_robots: int = 3
+    can_see_titanium: bool = False
+    can_see_enemy: bool = False 
+
+    def __post_init__(self):
+        self.sort_index = self.amount_titanium
+
+
 class GameEngine:
     def __init__(
         self,
         min_duration: int,
         max_duration: int,
         locations: List[str],
-        name: str,
-        titanium: int,
-        robots: int,
+        gamer: User,
     ):
         self._continue_the_game = True
         self._engine_state = ''
         self._hub_top = hub_top
         self._hub_bottom = hub_bottom
-        self._robots = robots
-        self._titanium = titanium
+        self.gamer = gamer
         self._game_menu_options = {
             'ex': self.explore,
             'up': self.upgrade,
@@ -145,7 +147,6 @@ class GameEngine:
         self.min_duration = min_duration
         self.max_duration = max_duration
         self.locations = locations
-        self._player_name = name
 
     def run_the_game(self) -> str:
         self.print_game_hub()
@@ -158,21 +159,21 @@ class GameEngine:
         self._continue_the_game = False
 
     @staticmethod
-    def show_titanium(titanium) -> str:
-        return f'| Titanium: {titanium}                                                                  |'
+    def show_titanium(amount_titanium) -> str:
+        return f'| Titanium: {amount_titanium}                                                                  |'
 
     def print_game_hub(self) -> None:
         print(self._hub_top)
-        print(self.make_robot_hub(self._robots))
+        print(self.make_robot_hub(self.gamer.amount_robots))
         print(self._hub_top)
-        print(self.show_titanium(self._titanium))
+        print(self.show_titanium(self.gamer.amount_titanium))
         print(self._hub_bottom)
 
     @staticmethod
-    def make_robot_hub(robots) -> str:
+    def make_robot_hub(amount_robots) -> str:
         lines = robot.split('\n')
         for _ in range(len(lines)):
-            lines[_] = '  |  '.join([lines[_]] * robots)
+            lines[_] = '  |  '.join([lines[_]] * amount_robots)
         return '\n'.join(lines)
 
     def run_pause_menu(self) -> None:
@@ -182,7 +183,7 @@ class GameEngine:
     def explore(self) -> None:
         exploration = Explore(self.min_duration, self.max_duration, self.locations)
         explored_titanium = exploration.run_exploration()
-        self._titanium += explored_titanium
+        self.gamer.amount_titanium += explored_titanium
         self.run_the_game()
 
     def upgrade(self) -> None:
@@ -192,7 +193,7 @@ class GameEngine:
 
     def save_game(self) -> None:
         slot_menu = SlotsMenu()
-        slot_menu.run_save_menu(self._player_name, self._titanium, self._robots)
+        slot_menu.run_save_menu(self.gamer)
         self.run_the_game()
 
     def exit(self) -> None:
@@ -338,7 +339,7 @@ class SlotsMenu:
         return f'save_file_{slot}.txt'
 
     def show_slots_to_select(self) -> None:
-        print('\tSelect save slot:')
+        print('\tSelect slot:')
         for key, session in self.slots.items():
             print(f'\t[{key}] {session}')
 
@@ -349,15 +350,15 @@ class SlotsMenu:
                 self.slots[slot] = session
 
     @staticmethod
-    def save_game_session_to_file(slot: str, name: str, amount: int, robots: int) -> None:
+    def save_game_session_to_file(slot: str, gamer: User) -> None:
         filename = SlotsMenu.make_filename(slot)
         with open(filename, 'w', encoding='utf-8') as file_for_export:
             save_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
-            line = f'{name} Titanium: {amount} Robots: {robots} Last save: {save_time}'
+            line = f'{gamer.name} Titanium: {gamer.amount_titanium} Robots: {gamer.amount_robots} Last save: {save_time}'
             file_for_export.write(line)
             print(game_saved)
 
-    def run_save_menu(self, name: str, amount: int, robots: int) -> None:
+    def run_save_menu(self, gamer: User) -> None:
         self.check_slots_in_backup()
         while self._slots_menu_works:
             self.show_slots_to_select()
@@ -365,13 +366,19 @@ class SlotsMenu:
             if entry == 'back':
                 self._slots_menu_works = False
             if entry in self.slots:
-                self.save_game_session_to_file(entry, name, amount, robots)
+                self.save_game_session_to_file(entry, gamer)
                 self._slots_menu_works = False
             else:
                 print('Invalid input')
 
     @staticmethod
-    def load_game_session_from_file(slot: str) -> str:
+    def parse_user_from_session(session: str) -> User:
+        session = session.split()
+        gamer = User(session[0], int(session[2]), int(session[4]))
+        return gamer
+
+    @staticmethod
+    def load_game_session_from_file(slot: str) -> User:
         filename = SlotsMenu.make_filename(slot)
         try:
             with open(filename, 'r', encoding='utf-8') as file_for_import:
@@ -379,15 +386,16 @@ class SlotsMenu:
         except FileNotFoundError:
             print('File not found.')
 
-    def run_load_menu(self) -> str:
+    def run_load_menu(self) -> User:
         self.check_slots_in_backup()
         while self._slots_menu_works:
             self.show_slots_to_select()
             entry = input('Your command:\n').lower()
             if entry == 'back':
-                return ''
+                return User('')
             if entry in self.slots:
-                return self.load_game_session_from_file(entry)
+                session = self.load_game_session_from_file(entry)
+                return self.parse_user_from_session(session)
             else:
                 print('Invalid input', entry)
 
